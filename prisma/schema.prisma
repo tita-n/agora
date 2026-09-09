@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id         String   @id @default(cuid())
+  name       String
+  subdomain  String   @unique
+  customDomain String? @unique
+  ownerId    String
+  themeId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  owner      User     @relation(fields: [ownerId], references: [id])
+  theme      Theme?   @relation(fields: [themeId], references: [id])
+
+  @@index([subdomain])
+  @@index([ownerId])
+}
+
+model Theme {
+  id         String     @id @default(cuid())
+  name       String
+  devId      String
+  price      Int        // in kobo (smallest currency unit) to avoid float issues
+  category   String
+  createdAt  DateTime   @default(now())
+  dev        User       @relation(fields: [devId], references: [id])
+  businesses Business[]
+
+  @@index([devId])
+  @@index([category])
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  role      String     // "business_owner" | "developer" | "admin"
+  createdAt DateTime   @default(now())
+  businesses Business[]
+  themes     Theme[]
+
+  @@index([email])
+  @@index([role])
+}
