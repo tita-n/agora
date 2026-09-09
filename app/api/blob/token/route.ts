@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@vercel/blob/server";
+import { createServerClient } from "@vercel/blob";
 
 /**
  * Issues a short-lived upload token for client-side Vercel Blob uploads.

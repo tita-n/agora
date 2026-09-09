@@ -1,13 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 
-interface PageProps {
-  params: { subdomain: string };
-}
-
-export default async function SitePage({ params }: PageProps) {
+export default async function SitePage({ params }: { params: Promise<{ subdomain: string }> }) {
+  const { subdomain } = await params;
   const business = await prisma.business.findUnique({
-    where: { subdomain: params.subdomain },
+    where: { subdomain },
     include: { owner: true, theme: true },
   });
 
@@ -18,7 +15,7 @@ export default async function SitePage({ params }: PageProps) {
       <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-900">{business.name}</h1>
         <p className="mt-2 text-gray-500">
-          Subdomain: <code>{business.subdomain}</code>
+          Subdomain: <code>{subdomain}</code>
         </p>
         {business.theme && (
           <p className="mt-1 text-sm text-gray-400">
