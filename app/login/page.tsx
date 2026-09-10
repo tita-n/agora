@@ -19,6 +19,7 @@ export default function LoginPage() {
       email: formData.get("email"),
       password: formData.get("password"),
       redirect: false,
+      redirectTo: "/api/auth/after-login",
     });
 
     setLoading(false);
@@ -26,7 +27,8 @@ export default function LoginPage() {
     if (res?.error) {
       setError("Invalid email or password");
     } else {
-      router.push("/dashboard");
+      // Redirect to role-appropriate page on next navigation
+      router.push("/api/auth/after-login");
       router.refresh();
     }
   }
