@@ -12,24 +12,30 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user) return null;
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
+          if (!user) return null;
 
-        const valid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-        if (!valid) return null;
+          const valid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+          if (!valid) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        } as any;
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+          } as any;
+        } catch (error) {
+          // Log the error for debugging (in a real app you might use a logger)
+          console.error("NextAuth authorize callback error:", error);
+          return null;
+        }
       },
     }),
   ],
