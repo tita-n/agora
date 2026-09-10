@@ -1,21 +1,26 @@
-import { NextResponse } from "next/server";
+import { handleUpload } from "@vercel/blob/client";
+import { NextRequest } from "next/server";
 
 /**
- * Placeholder upload token route.
- * TODO Phase 1: integrate real Vercel Blob client token generation.
+ * Client-upload token handler.
+ * The @vercel/blob/client upload() function calls this route to get a client token
+ * before uploading directly to Vercel Blob storage.
  */
-export async function POST() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    return NextResponse.json(
-      { error: "BLOB_READ_WRITE_TOKEN is not configured" },
-      { status: 500 }
-    );
-  }
+export async function POST(request: NextRequest): Promise<Response> {
+  const body = await request.json();
 
-  // Placeholder: real implementation will use @vercel/blob's token API
-  return NextResponse.json({
-    url: "https://placeholder.vercel-storage.com",
-    token: "placeholder-upload-token",
+  const data = await handleUpload({
+    request,
+    body,
+    onBeforeGenerateToken: async (_pathname, _clientPayload, _multipart) => {
+      // Called before generating the client token. Return any token options here.
+      return {};
+    },
+    // onUploadCompleted removed for Phase 0 — would store blob URL in DB
+  });
+
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
   });
 }
