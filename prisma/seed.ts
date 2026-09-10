@@ -26,16 +26,22 @@ async function main() {
     },
   });
 
-  const theme = await prisma.theme.upsert({
-    where: { devId_name: { devId: dev.id, name: "Minimal" } },
-    update: { price: 5000, category: "Business" },
-    create: {
-      name: "Minimal",
-      devId: dev.id,
-      price: 5000, // kobo = ₦50.00
-      category: "Business",
-    },
+  const existingTheme = await prisma.theme.findFirst({
+    where: { devId: dev.id, name: "Minimal" },
   });
+  const theme = existingTheme
+    ? await prisma.theme.update({
+        where: { id: existingTheme.id },
+        data: { price: 5000, category: "Business" },
+      })
+    : await prisma.theme.create({
+        data: {
+          name: "Minimal",
+          devId: dev.id,
+          price: 5000, // kobo = ₦50.00
+          category: "Business",
+        },
+      });
 
   await prisma.business.upsert({
     where: { subdomain: "demo" },

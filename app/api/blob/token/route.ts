@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@vercel/blob";
 
 /**
- * Issues a short-lived upload token for client-side Vercel Blob uploads.
- * The browser calls this, then streams bytes directly to Vercel Blob.
+ * Placeholder upload token route.
+ * TODO Phase 1: integrate real Vercel Blob client token generation.
  */
 export async function POST() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -14,8 +13,9 @@ export async function POST() {
     );
   }
 
-  const blob = createServerClient(token);
-  const { url, token: uploadToken } = await blob.generateClientToken();
-
-  return NextResponse.json({ url, token: uploadToken });
+  // Placeholder: real implementation will use @vercel/blob's token API
+  return NextResponse.json({
+    url: "https://placeholder.vercel-storage.com",
+    token: "placeholder-upload-token",
+  });
 }

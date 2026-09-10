@@ -1,15 +1,26 @@
-import { auth } from "next-auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./auth-options";
 import { prisma } from "./prisma";
 import { redirect } from "next/navigation";
+
+interface SessionUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string;
+}
 
 /**
  * Returns the current session user, or null if not authenticated.
  * Safe to call from Server Components and Route Handlers.
  */
 export async function getCurrentUser() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  return session.user;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+  const user = session.user as SessionUser;
+  if (!user.id) return null;
+  return user;
 }
 
 /**
@@ -27,7 +38,7 @@ export async function requireAuth() {
  */
 export async function requireRole(roles: string[]) {
   const user = await requireAuth();
-  if (!roles.includes(user.role)) redirect("/unauthorized");
+  if (!roles.includes(user.role ?? "")) redirect("/unauthorized");
   return user;
 }
 

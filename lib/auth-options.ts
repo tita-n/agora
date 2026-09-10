@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "Credentials",
@@ -12,30 +12,24 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) return null;
 
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
-          if (!user) return null;
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+        if (!user) return null;
 
-          const valid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
-          if (!valid) return null;
+        const valid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+        if (!valid) return null;
 
-          return {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-          } as any;
-        } catch (error) {
-          // Log the error for debugging (in a real app you might use a logger)
-          console.error("NextAuth authorize callback error:", error);
-          return null;
-        }
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        } as any;
       },
     }),
   ],
@@ -56,7 +50,7 @@ export const authOptions = {
   pages: {
     signIn: "/login",
   },
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt" as const },
   secret: process.env.NEXTAUTH_SECRET,
 };
 

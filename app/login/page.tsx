@@ -1,9 +1,41 @@
+"use client";
+
+import { signIn } from "next-auth/react";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+
 export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const res = await signIn("credentials", {
+      email: formData.get("email"),
+      password: formData.get("password"),
+      redirect: false,
+    });
+
+    setLoading(false);
+
+    if (res?.error) {
+      setError("Invalid email or password");
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold text-center mb-6">Sign in</h1>
-        <form action="/api/auth/signin/credentials" method="POST" className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="email"
@@ -34,11 +66,15 @@ export default function LoginPage() {
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
             />
           </div>
+          {error && (
+            <p className="text-sm text-red-600 text-center">{error}</p>
+          )}
           <button
             type="submit"
-            className="w-full rounded-md bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+            disabled={loading}
+            className="w-full rounded-md bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-gray-400">
@@ -48,5 +84,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-export const metadata = { title: "Sign in — Agora" };
