@@ -13,6 +13,9 @@ A technical skeleton for a multi-tenant SaaS platform where small businesses sub
 ✅ Prisma seed with demo data  
 ✅ Protected route groups (/dashboard, /dev)  
 ✅ Vercel Blob upload smoke test  
+✅ Business onboarding flow (subdomain → profile → live preview → Paystack payment)  
+✅ Paystack subscriptions (test mode): webhook-verified activation, past_due grace handling  
+✅ "Minimal" theme rendering real business profiles on tenant subdomains  
 
 ## Getting Started
 
@@ -37,6 +40,7 @@ Update these values with your actual credentials:
 - `NEXTAUTH_SECRET`: Generate a 32-character secret (e.g. `openssl rand -base64 32`)
 - `NEXTAUTH_URL`: `http://localhost:3000` for local development
 - `ROOT_DOMAIN`: `agora.test` for local testing
+- `PAYSTACK_SECRET_KEY`: your Paystack **test** secret key (`sk_test_…`) from the Paystack dashboard — required for onboarding payments; production builds fail without it
 
 ### 3. Generate Prisma client
 
@@ -100,6 +104,7 @@ npm run db:reset
   - `NEXTAUTH_URL` (e.g., `https://your-project.vercel.app`)
   - `ROOT_DOMAIN` (e.g., `your-project.vercel.app`)
   - `BLOB_READ_WRITE_TOKEN` (get this from Vercel Blob dashboard)
+  - `PAYSTACK_SECRET_KEY` (live key at launch; test key `sk_test_…` before). Production builds intentionally fail without it.
 
 ### 2. ⚠️ Important: subdomains on `.vercel.app`
 
@@ -144,14 +149,32 @@ Since real wildcard DNS only works once deployed, you'll need to simulate subdom
    - `http://fashionbrand.agora.test` → should show "Fashion Brand" name (if seeded)
    - `http://www.agora.test` → should show Agora marketing page
 
-## What's Next (Phase 1)
+## Phase 1: Onboarding & Paystack Payments
 
-- Real theme templates/rendering logic
-- Payment integration (Paystack or other)
-- Usage tracking and 70/30 revenue split
+**The loop:** `/onboard` (business_owner only) → 4 steps: subdomain (live-validated against `lib/tenant.ts` rules + DB uniqueness), profile (name/description/contacts/logo/color), live preview of the real Minimal theme, then payment. **No `Business` row exists until a verified payment fulfills the session** — abandoning onboarding never squats a subdomain.
+
+**Money rules (all server-side, never client-supplied):**
+- Amount = `theme.price + 500000` kobo (₦5,000 flat hosting fee), computed from the DB at `POST /api/onboarding/payment-init`; `Theme.price > 0` is enforced by both `chargeAmountKobo()` and a DB CHECK constraint.
+- Checkout runs against Paystack **Plans** (monthly interval), so renewals are handled by Paystack itself.
+- `POST /api/webhooks/paystack` accepts **only** requests whose `x-paystack-signature` (HMAC-SHA512 over the exact raw body, keyed by your secret) verifies; everything else is 401'd before parsing.
+- `charge.success` does not create anything directly — it triggers `fulfillPaidSession(reference)`, which **re-verifies the transaction via the Paystack API**, reconciles the charged amount against the invoice amount, then creates the Business (`subscriptionStatus: "active"`, `nextBillingDate` +30d) exactly once (single-flight claim on the session; safe against duplicate/replayed webhooks).
+- `invoice.payment_failed` / `subscription.disable` → `past_due`; site stays live (grace). Renewal events flip back to `active` and bump `nextBillingDate`.
+- The post-payment return page (`/onboard/callback?reference=…`) calls `/api/onboarding/confirm`, which runs the same idempotent verification — so onboarding completes even if the webhook is slow, and never on a forged redirect.
+
+**Testing with test mode:**
+1. Set `PAYSTACK_SECRET_KEY=sk_test_…` (Paystack dashboard → Settings → API keys). Use Paystack's published test cards from their docs — never in this repo.
+2. Local webhooks: run `npx paystack listen <your-public-url>` (Paystack CLI) or point a tunnel at your dev server, then set the webhook URL in the dashboard to `<public-url>/api/webhooks/paystack` with events: `charge.success`, `invoice.payment_failed`, `subscription.disable`, `subscription.renew`.
+3. Or skip webhooks entirely during manual testing — the confirm route self-verifies on return.
+
+**Acceptance checklist:** see the "Verify it yourself" flow: onboard with a test card → business appears at `<sub>.agora.test` (or `/sites/<sub>`) → dashboard shows Active + renew date → simulate `invoice.payment_failed` via the Paystack dashboard's event sender → banner appears, site stays live → `/dev` shows the subscriber row.
+
+## What's Next (Phase 2)
+
+- Usage tracking and 70/30 revenue split automation (dev payout transfers)
+- Multi-theme store + developer theme publishing UI
 - Custom domain verification flow
+- Suspension workflow after extended `past_due`
 - UI polish and responsive design
-- Developer onboarding flow
 
 ## Out of Scope for Phase 0
 

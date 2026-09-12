@@ -1,25 +1,43 @@
-import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { MinimalSite } from "@/components/themes/minimal-site";
+import { mainAppUrl } from "@/lib/site-urls";
+
+/**
+ * Tenant site (Phase 1): renders the real "Minimal" theme from the
+ * business's stored profile.
+ *
+ * CACHING RULE (audit finding M-3): this route is reached from many hosts
+ * (middleware rewrites `*.ROOT_DOMAIN` here) AND directly by path. If you
+ * ever add `revalidate`, `unstable_cache`, or an HTTP cache to this tree,
+ * the subdomain MUST be part of the cache key — otherwise tenant A's HTML
+ * will be served to tenant B's visitors. `force-dynamic` keeps that
+ * impossible until a per-tenant cache design exists.
+ */
+export const dynamic = "force-dynamic";
 
 /**
  * Explicit field selection (finding H-1): never `include` full relations —
- * `owner: true` would pull the user row including its bcrypt `password` hash
- * into every tenant page render. Whitelist exactly what the template needs.
+ * only whitelist the fields the theme actually renders, so a User row (and
+ * its bcrypt `password` hash) can never ride into a response.
  */
 const tenantSiteSelect = {
   name: true,
-  subdomain: true,
   logoUrl: true,
-  theme: {
-    select: {
-      name: true,
-    },
-  },
+  description: true,
+  primaryColor: true,
+  contactEmail: true,
+  contactPhone: true,
+  address: true,
 } as const;
 
 export default async function SitePage({ params }: { params: Promise<{ subdomain: string }> }) {
-  const { subdomain } = await params;
+  const { subdomain: raw } = await params;
+  // Middleware already lowercases; this covers direct /sites/DEMO access so
+  // both entry paths resolve identically. (Subdomains are stored lowercase —
+  // enforced by draftSchema's transform at creation.)
+  const subdomain = raw.toLowerCase();
+
   const business = await prisma.business.findUnique({
     where: { subdomain },
     select: tenantSiteSelect,
@@ -27,31 +45,5 @@ export default async function SitePage({ params }: { params: Promise<{ subdomain
 
   if (!business) notFound();
 
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        {business.logoUrl && (
-          <Image
-            src={business.logoUrl}
-            alt={`${business.name} logo`}
-            width={120}
-            height={120}
-            className="mx-auto mb-4 h-24 w-24 rounded object-contain"
-          />
-        )}
-        <h1 className="text-4xl font-bold text-gray-900">{business.name}</h1>
-        <p className="mt-2 text-gray-500">
-          Subdomain: <code>{subdomain}</code>
-        </p>
-        {business.theme && (
-          <p className="mt-1 text-sm text-gray-400">
-            Theme: {business.theme.name}
-          </p>
-        )}
-        <p className="mt-4 text-xs text-gray-400">
-          Phase 0 placeholder — the real theme rendering will live here.
-        </p>
-      </div>
-    </main>
-  );
+  return <MinimalSite data={business} agoraHref={mainAppUrl()} />;
 }

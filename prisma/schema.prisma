@@ -21,21 +21,57 @@ model Business {
   ownerId    String
   themeId    String?
   logoUrl    String?
+  description   String?
+  contactEmail  String?
+  contactPhone  String?
+  address       String?
+  primaryColor  String? // hex "#rrggbb", validated app-side (zod), used as inline-style accent only
+  subscriptionStatus String @default("inactive") // "inactive" | "active" | "past_due" — transitions in lib/onboarding.ts
+  nextBillingDate    DateTime?
+  paystackCustomerCode     String?
+  paystackSubscriptionCode String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
   theme      Theme?   @relation(fields: [themeId], references: [id])
+  onboardingSessions OnboardingSession[]
 
   // No @@index([subdomain]) — @unique already provides the index (M-7).
   @@index([ownerId])
   @@index([themeId]) // M-6: theme usage / revenue-split lookups scan this
 }
 
+/**
+ * A completed onboarding draft awaiting/confirming payment. This is what
+ * keeps the promise "no Business row until payment succeeds": everything the
+ * owner entered is stored here against the Paystack reference and only
+ * materializes into Business on a verified, amount-reconciled charge.success.
+ * Abandoned sessions can never hold a subdomain hostage in Business; live
+ * sessions are only consulted to make the subdomain picker honest.
+ */
+model OnboardingSession {
+  id        String   @id @default(cuid())
+  userId    String
+  reference String   @unique // `aos_<uuid>` sent to Paystack & back
+  status    String   @default("initiated") // initiated | paid | business_created | failed
+  payload   Json     // validated ONLY via draftSchema in lib/onboarding.ts
+  paystackTxId String?
+  businessId String?  @unique
+  failReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User      @relation(fields: [userId], references: [id])
+  business  Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, createdAt]) // sweep/expiry queries: initiated sessions older than X
+}
+
 model Theme {
   id         String     @id @default(cuid())
   name       String
   devId      String
-  price      Int        // in kobo (smallest currency unit) to avoid float issues
+  price      Int        // in kobo (smallest currency unit) to avoid float issues; must be > 0 — enforced by DB check (Theme_price_positive, see migration 20260912150000_phase1) and by chargeAmountKobo() before any payment calculation
   category   String
   createdAt  DateTime   @default(now())
   dev        User       @relation(fields: [devId], references: [id])
@@ -53,6 +89,7 @@ model User {
   createdAt DateTime   @default(now())
   businesses Business[]
   themes     Theme[]
+  onboardingSessions OnboardingSession[]
 
   // No @@index([email]) — @unique already provides the index (M-7).
   @@index([role])

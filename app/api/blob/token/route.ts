@@ -39,20 +39,23 @@ export async function POST(req: NextRequest) {
         if (!PATH_RE.test(pathname) || !pathname.startsWith(`logos/${userId}/`)) {
           throw new Error("Invalid upload path");
         }
-        // Resolve the upload's destination business server-side; Phase 0
-        // assumes one business per owner. It is embedded in the signed
-        // tokenPayload so the completion callback (M-9) can persist the
-        // blob URL without trusting anything the client sends.
+        // Resolve the upload's destination business server-side; Phase 1
+        // assumes one business per owner. When present it goes into the
+        // signed tokenPayload so the completion callback (M-9) can persist
+        // the blob URL without trusting anything client-sent. An owner still
+        // in onboarding has no Business row yet — uploads stay allowed
+        // (same user prefix, same limits); the completion callback skips
+        // persistence and the draft keeps the returned URL.
         const business = await prisma.business.findFirst({
           where: { ownerId: userId },
           orderBy: { createdAt: "asc" },
           select: { id: true },
         });
-        if (!business) {
-          throw new Error("No business for this account yet");
-        }
         return {
-          tokenPayload: JSON.stringify({ userId, businessId: business.id }),
+          tokenPayload: JSON.stringify({
+            userId,
+            businessId: business?.id ?? null,
+          }),
           allowedContentTypes: ALLOWED,
           maximumSizeInBytes: MAX_BYTES,
           addRandomSuffix: true,

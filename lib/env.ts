@@ -28,6 +28,24 @@ const EnvSchema = z.object({
   // Only required when exercising uploads (/api/blob/*); the blob SDK
   // reads it from the environment itself.
   BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+  // Paystack secret key (sk_test_… for local/test work). Optional in dev so
+  // non-payment work runs without it; required in production (see refine).
+  PAYSTACK_SECRET_KEY: z
+    .string()
+    .regex(/^sk_(test|live)_[A-Za-z0-9_]+$/, "PAYSTACK_SECRET_KEY must look like sk_test_… / sk_live_…")
+    .optional(),
+  // Test seam only: point at a local mock to unit-test the client. NEVER set
+  // this in production.
+  PAYSTACK_API_BASE_URL: z.string().url().optional(),
+})
+.superRefine((val, ctx) => {
+  if (isProd && !val.PAYSTACK_SECRET_KEY) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["PAYSTACK_SECRET_KEY"],
+      message: "PAYSTACK_SECRET_KEY is required in production (payments + webhook verification)",
+    });
+  }
 });
 
 const parsed = EnvSchema.safeParse(process.env);

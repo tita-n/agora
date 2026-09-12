@@ -52,12 +52,25 @@ async function main() {
 
   await prisma.business.upsert({
     where: { subdomain: "demo" },
-    update: { name: "Demo Boutique", ownerId: owner.id, themeId: theme.id },
+    update: {
+      name: "Demo Boutique",
+      ownerId: owner.id,
+      themeId: theme.id,
+      subscriptionStatus: "active",
+    },
     create: {
       name: "Demo Boutique",
       subdomain: "demo",
       ownerId: owner.id,
       themeId: theme.id,
+      description:
+        "Handpicked fabrics, made-to-order pieces, and alterations — style that fits, not just size.",
+      contactEmail: "hello@demoboutique.example",
+      contactPhone: "+234 801 234 5678",
+      address: "12 Awolowo Road, Ikoyi, Lagos",
+      primaryColor: "#7c3aed",
+      subscriptionStatus: "active",
+      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
 

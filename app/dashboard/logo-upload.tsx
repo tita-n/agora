@@ -1,14 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { uploadLogo } from "@/lib/blob-client";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_BYTES = 2 * 1024 * 1024;
 
-export default function LogoUpload() {
+/**
+ * Logo management for an existing business. Upload goes browser → Blob
+ * directly (token issued and constrained by /api/blob/token); the signed
+ * completion callback persists Business.logoUrl.
+ */
+export default function LogoUpload({ currentLogoUrl }: { currentLogoUrl?: string | null }) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [status, setStatus] = useState<
     "idle" | "uploading" | "done" | "error"
   >("idle");
@@ -51,37 +59,41 @@ export default function LogoUpload() {
       return;
     }
     setStatus("done");
+    // The upload-completed callback persists logoUrl on the business;
+    // refresh so dashboard + live site reflect it without manual reload.
+    router.refresh();
   }
 
+  const shown = preview ?? currentLogoUrl ?? null;
+
   return (
-    <div className="mt-8 w-full max-w-sm rounded-lg border border-gray-200 p-4 text-left">
-      <h2 className="text-sm font-semibold text-gray-700">
-        Upload your logo
-      </h2>
+    <div className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left">
+      <h2 className="text-sm font-semibold text-gray-700">Logo</h2>
       <p className="mb-3 text-xs text-gray-400">
-        Smoke test for Vercel Blob — uploads go straight to Blob from the
-        browser.
+        PNG, JPEG or WebP up to 2 MB. Appears on your site hero once saved.
       </p>
       <label className="block cursor-pointer rounded-md border border-dashed border-gray-300 px-3 py-4 text-center text-sm text-gray-500 hover:bg-gray-50">
-        {status === "uploading" ? "Uploading…" : "Choose image"}
+        {status === "uploading" ? "Uploading…" : currentLogoUrl ? "Replace logo" : "Choose image"}
         <input
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={onChange}
         />
       </label>
-      {preview && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={preview}
+      {shown && (
+        <Image
+          src={shown}
           alt="Logo preview"
-          className="mt-3 max-h-24 rounded"
+          width={96}
+          height={96}
+          className="mt-3 max-h-24 rounded object-contain"
+          unoptimized={shown.startsWith("blob:")} // local object-URL preview
         />
       )}
       {status === "done" && (
         <p className="mt-2 text-xs text-green-600">
-          Uploaded successfully.
+          Saved — your site now shows this logo.
         </p>
       )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
