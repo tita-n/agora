@@ -1,6 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+if (process.env.NODE_ENV === "production") {
+  throw new Error(
+    "prisma/seed.ts is a dev-only fixture (it upserts known test accounts). " +
+    "Refusing to run in production."
+  );
+}
+
 const prisma = new PrismaClient();
 
 async function main() {

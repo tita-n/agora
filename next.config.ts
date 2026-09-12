@@ -4,8 +4,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "public.blob.vercel-storage.com" },
-      { protocol: "https", hostname: "*.vercelusercontent.com" },
+      // Real Vercel Blob URLs are <store-prefix>.public.blob.vercel-storage.com
+      // — the exact hostname "public.blob.vercel-storage.com" never matches (M-10).
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
     ],
   },
 };

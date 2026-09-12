@@ -1,26 +1,68 @@
-import { handleUpload } from "@vercel/blob/client";
-import { NextRequest } from "next/server";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-config";
+import { prisma } from "@/lib/prisma";
 
 /**
- * Client-upload token handler.
- * The @vercel/blob/client upload() function calls this route to get a client token
- * before uploading directly to Vercel Blob storage.
+ * Client-upload token handler (finding C-1, AUDIT.md).
+ *
+ * The browser's upload() call hits this route to get a short-lived,
+ * signed client token. The token is constrained server-side:
+ *  - caller must have an active session
+ *  - upload path must be inside the caller's own logos/<userId>/ prefix
+ *  - only small PNG/JPEG/WebP images may be uploaded
+ *  - the token expires after 15 minutes
  */
-export async function POST(request: NextRequest): Promise<Response> {
-  const body = await request.json();
 
-  const data = await handleUpload({
-    request,
-    body,
-    onBeforeGenerateToken: async (_pathname, _clientPayload, _multipart) => {
-      // Called before generating the client token. Return any token options here.
-      return {};
-    },
-    // onUploadCompleted removed for Phase 0 — would store blob URL in DB
-  });
+const MAX_BYTES = 2 * 1024 * 1024;
+const ALLOWED = ["image/png", "image/jpeg", "image/webp"];
+const PATH_RE = /^logos\/[a-z0-9]{10,32}\/[\w.-]+\.(png|jpe?g|webp)$/i;
 
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  let body: HandleUploadBody;
+  try {
+    body = (await req.json()) as HandleUploadBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  try {
+    const data = await handleUpload({
+      request: req,
+      body,
+      onBeforeGenerateToken: async (pathname) => {
+        if (!PATH_RE.test(pathname) || !pathname.startsWith(`logos/${userId}/`)) {
+          throw new Error("Invalid upload path");
+        }
+        // Resolve the upload's destination business server-side; Phase 0
+        // assumes one business per owner. It is embedded in the signed
+        // tokenPayload so the completion callback (M-9) can persist the
+        // blob URL without trusting anything the client sends.
+        const business = await prisma.business.findFirst({
+          where: { ownerId: userId },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
+        if (!business) {
+          throw new Error("No business for this account yet");
+        }
+        return {
+          tokenPayload: JSON.stringify({ userId, businessId: business.id }),
+          allowedContentTypes: ALLOWED,
+          maximumSizeInBytes: MAX_BYTES,
+          addRandomSuffix: true,
+          validUntil: Date.now() + 15 * 60 * 1000,
+          callbackUrl: `${req.nextUrl.origin}/api/blob/upload-completed`,
+        };
+      },
+    });
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json({ error: "Could not issue upload token" }, { status: 403 });
+  }
 }

@@ -13,7 +13,6 @@ A technical skeleton for a multi-tenant SaaS platform where small businesses sub
 ✅ Prisma seed with demo data  
 ✅ Protected route groups (/dashboard, /dev)  
 ✅ Vercel Blob upload smoke test  
-✅ vercel.json for deployment readiness  
 
 ## Getting Started
 

@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { uploadLogo } from "@/lib/blob-client";
 
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_BYTES = 2 * 1024 * 1024;
+
 export default function LogoUpload() {
+  const { data: session } = useSession();
   const [status, setStatus] = useState<
     "idle" | "uploading" | "done" | "error"
   >("idle");
@@ -14,20 +19,38 @@ export default function LogoUpload() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Client-side pre-checks for fast failure only — the real enforcement
+    // lives in /api/blob/token (size, type, path prefix).
+    const userId = session?.user?.id;
+    if (!userId) {
+      setStatus("error");
+      setError("You must be signed in to upload.");
+      return;
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setStatus("error");
+      setError("Only PNG, JPEG, or WebP images are allowed.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setStatus("error");
+      setError("File exceeds the 2 MB limit.");
+      return;
+    }
+
     setStatus("uploading");
     setError(null);
 
     // Local preview
     setPreview(URL.createObjectURL(file));
 
-    const { url, error: uploadError } = await uploadLogo(file);
+    const { error: uploadError } = await uploadLogo(userId, file);
     if (uploadError) {
       setStatus("error");
       setError(uploadError);
       return;
     }
     setStatus("done");
-    console.log("Uploaded logo:", url);
   }
 
   return (

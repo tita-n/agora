@@ -79,9 +79,6 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Test accounts: dev@agora.test / password123 · owner@agora.test / password123
-        </p>
       </div>
     </main>
   );

@@ -1,58 +1,56 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { env } from "@/lib/env";
+import { classifyHost, tenantRewritePath } from "@/lib/tenant";
 
 /**
- * Agora multi-tenant subdomain routing.
+ * Agora multi-tenant subdomain routing (findings M-1 / M-2).
  *
- * Reads the incoming Host header and splits it into a subdomain and the
- * root domain. If the leftmost label is "www" or the root domain itself,
- * the request is routed to the main marketing/app pages (no rewrite).
- * Otherwise the request is rewritten to /sites/[subdomain] so a dynamic
- * route can later render that business's live site.
+ * Decision per request, from the Host header only (never X-Forwarded-Host):
+ *  - apex ROOT_DOMAIN and www.ROOT_DOMAIN        -> main app
+ *  - <valid-label>.ROOT_DOMAIN                   -> rewrite to /sites/<label>/<rest-of-path>
+ *    (label must be a valid DNS label and non-reserved; anything else under
+ *     the root — malformed, nested like a.b, or reserved like admin — 404s
+ *     immediately instead of falling through to the main app)
+ *  - any other host                              -> main app in development;
+ *    in production, 404 (host allowlist) so unattached/mispointed domains
+ *    never render the app, the login form included.
  *
- * On Vercel with a wildcard domain (*.agora.com), the Host header arrives
- * as e.g. "fashionbrand.agora.com" and this middleware handles it.
- * Locally, simulate subdomains by editing /etc/hosts and running with a
- * custom Host header (see README).
+ * Existence of the tenant itself is still resolved by the page via the DB —
+ * a syntactically valid but unknown tenant (evil.agora.test) renders the
+ * tenant-scoped "Site not found" 404, not the main app.
  */
 
-function getSubdomain(host: string): string | null {
-  // Strip port if present
-  const hostname = host.split(":")[0].toLowerCase();
-
-  const root = (process.env.ROOT_DOMAIN || "agora.test")
-    .split(":")[0]
-    .toLowerCase();
-
-  // Exact match on root domain -> main app, no subdomain
-  if (hostname === root) return null;
-
-  // www is treated as the main app
-  if (hostname === `www.${root}`) return null;
-
-  // Must end with the root domain (e.g. fashionbrand.agora.test)
-  const suffix = `.${root}`;
-  if (!hostname.endsWith(suffix)) return null;
-
-  const sub = hostname.slice(0, -suffix.length);
-  if (!sub || sub.includes(".")) return null; // reject nested subdomains
-
-  return sub;
+function tenantNotFound(): NextResponse {
+  return new NextResponse("404 — Not Found", {
+    status: 404,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
 }
 
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
-  const subdomain = getSubdomain(host);
+  const root = (env.ROOT_DOMAIN || "agora.test").split(":")[0].toLowerCase();
 
-  // If no subdomain, continue to the normal app routes (marketing, login, etc.)
-  if (!subdomain) {
-    return NextResponse.next();
-  }
+  // Strict host allowlist (M-2) applies to production builds only, so local
+  // development (/etc/hosts tricks, arbitrary ports) keeps working. Vercel
+  // PREVIEW deployments are exempted too: they arrive on random
+  // *.vercel.app hosts that are legitimately not under ROOT_DOMAIN, and
+  // enforcing there would 404 every PR preview URL. VERCEL_ENV is
+  // platform-injected and cannot be forged via headers.
+  const strictHosts =
+    process.env.NODE_ENV === "production" &&
+    process.env.VERCEL_ENV !== "preview";
 
-  // Rewrite to the tenant site route. This keeps the URL in the browser
-  // showing the subdomain while Next.js serves the /sites/[subdomain] page.
+  const route = classifyHost(host, root, strictHosts);
+
+  if (route.kind === "main") return NextResponse.next();
+  if (route.kind === "invalid") return tenantNotFound();
+
+  // Rewrite to the tenant site route, preserving the request's sub-path so
+  // tenant hosts can later expose their own routes (/pricing, /catalog, ...).
   const url = req.nextUrl.clone();
-  url.pathname = `/sites/${subdomain}`;
+  url.pathname = tenantRewritePath(route.subdomain, url.pathname);
   return NextResponse.rewrite(url);
 }
 

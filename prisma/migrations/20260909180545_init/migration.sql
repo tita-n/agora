@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('business_owner', 'developer', 'admin');
+
 -- CreateTable
 CREATE TABLE "Business" (
     "id" TEXT NOT NULL,
@@ -6,6 +9,7 @@ CREATE TABLE "Business" (
     "customDomain" TEXT,
     "ownerId" TEXT NOT NULL,
     "themeId" TEXT,
+    "logoUrl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -29,7 +33,7 @@ CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "role" TEXT NOT NULL,
+    "role" "Role" NOT NULL DEFAULT 'business_owner',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -42,10 +46,10 @@ CREATE UNIQUE INDEX "Business_subdomain_key" ON "Business"("subdomain");
 CREATE UNIQUE INDEX "Business_customDomain_key" ON "Business"("customDomain");
 
 -- CreateIndex
-CREATE INDEX "Business_subdomain_idx" ON "Business"("subdomain");
+CREATE INDEX "Business_ownerId_idx" ON "Business"("ownerId");
 
 -- CreateIndex
-CREATE INDEX "Business_ownerId_idx" ON "Business"("ownerId");
+CREATE INDEX "Business_themeId_idx" ON "Business"("themeId");
 
 -- CreateIndex
 CREATE INDEX "Theme_devId_idx" ON "Theme"("devId");
@@ -55,9 +59,6 @@ CREATE INDEX "Theme_category_idx" ON "Theme"("category");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
-CREATE INDEX "User_email_idx" ON "User"("email");
 
 -- CreateIndex
 CREATE INDEX "User_role_idx" ON "User"("role");

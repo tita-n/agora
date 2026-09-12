@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  business_owner
+  developer
+  admin
+}
+
 model Business {
   id         String   @id @default(cuid())
   name       String
@@ -14,13 +20,15 @@ model Business {
   customDomain String? @unique
   ownerId    String
   themeId    String?
+  logoUrl    String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
   theme      Theme?   @relation(fields: [themeId], references: [id])
 
-  @@index([subdomain])
+  // No @@index([subdomain]) — @unique already provides the index (M-7).
   @@index([ownerId])
+  @@index([themeId]) // M-6: theme usage / revenue-split lookups scan this
 }
 
 model Theme {
@@ -41,11 +49,11 @@ model User {
   id        String     @id @default(cuid())
   email     String     @unique
   password  String
-  role      String     // "business_owner" | "developer" | "admin"
+  role      Role       @default(business_owner) // M-8: enum, not free string
   createdAt DateTime   @default(now())
   businesses Business[]
   themes     Theme[]
 
-  @@index([email])
+  // No @@index([email]) — @unique already provides the index (M-7).
   @@index([role])
 }
