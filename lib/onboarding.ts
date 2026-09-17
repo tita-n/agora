@@ -113,6 +113,7 @@ export async function fulfillPaidSession(reference: string): Promise<FulfillResu
       paystackTxId: true,
       payload: true,
       businessId: true,
+      failReason: true, // read below for the "already failed" reason — must be selected
     },
   });
   if (!session) return { ok: false, reason: "Unknown payment reference." };
