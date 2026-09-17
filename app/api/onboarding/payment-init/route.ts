@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { draftSchema, type SessionPayload } from "@/lib/onboarding";
-import { HOSTING_FEE_KOBO, chargeAmountKobo, ensureMonthlyPlan, initializeTransaction } from "@/lib/paystack";
+import { draftSchema } from "@/lib/onboarding";
+import { PaystackError, chargeAmountKobo } from "@/lib/paystack";
+import { getActiveProvider } from "@/lib/payments";
+import { PaymentConfigError } from "@/lib/payments/types";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/onboarding/payment-init
  *
- * Validates the full onboarding draft, stores it as an OnboardingSession
- * (NOT a Business — rows materialize only from verified payment), and
- * starts a Paystack subscription-backed transaction (plan interval is
- * monthly, so renewals are handled by Paystack per the Subscriptions API
- * requirement). Returns { reference, authorizationUrl }; the browser
- * navigates to authorizationUrl.
+ * Validates the full onboarding draft, prices it server-side (theme row +
+ * hosting fee — the client never sends money or theme ids), then hands off
+ * to the ACTIVE payment provider (PAYMENT_PROVIDER env; "manual" bank
+ * transfer today, "paystack" hosted checkout tomorrow — same call, swap by
+ * env alone).
  *
- * The charge amount is computed HERE from the DB theme price — the client
- * never sends money. Email is the signed-in user's, never client input.
+ * Response contract for the wizard:
+ *   { provider, reference, amountKobo, instructions }
+ * where instructions.type === "bank_transfer" (render details + wait for
+ * admin) or "checkout_redirect" (navigate to redirectUrl — the Paystack
+ * path; its confirmation machinery — webhook + /onboard/callback — is
+ * untouched and lives outside this route).
+ *
+ * No Business row is created here under either provider: manual materializes
+ * on admin confirm, paystack on verified charge.success.
  */
 export async function POST(req: NextRequest) {
   // Same-origin check for cookie-authenticated mutation (NextAuth only
@@ -94,46 +101,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Theme pricing is misconfigured (price must be > 0)." }, { status: 500 });
   }
 
-  const reference = `aos_${randomUUID()}`;
-  const payload: SessionPayload = {
-    ...draft,
-    payerEmail: user.email,
-    themeId: theme.id,
-    amountKobo,
-  };
-
-  const session = await prisma.onboardingSession.create({
-    data: { userId: user.id, reference, payload: payload as never, status: "initiated" },
-    select: { id: true },
-  });
-
+  const provider = getActiveProvider();
   try {
-    const planCode = await ensureMonthlyPlan(amountKobo);
-    const tx = await initializeTransaction({
-      email: payload.payerEmail,
-      amountKobo,
-      reference,
-      planCode,
-      callbackUrl: `${req.nextUrl.origin}/onboard/callback?reference=${encodeURIComponent(reference)}`,
-      metadata: { source: "agora-onboarding", sessionId: session.id, hostingFeeKobo: HOSTING_FEE_KOBO },
-    });
-    await prisma.onboardingSession.update({
-      where: { id: session.id },
-      data: { paystackTxId: tx.txId },
-    });
+    const result = await provider.initiate(
+      {
+        draft,
+        userId: user.id,
+        payerEmail: user.email,
+        themeId: theme.id,
+        callbackOrigin: req.nextUrl.origin,
+      },
+      amountKobo
+    );
     return NextResponse.json({
-      reference,
-      authorizationUrl: tx.authorizationUrl,
+      provider: provider.name,
+      reference: result.reference,
       amountKobo,
+      instructions: result.instructions,
     });
   } catch (err) {
-    // Payment could not even start — release the draft's claim on the
-    // subdomain immediately instead of locking it for the session window.
-    await prisma.onboardingSession
-      .update({ where: { id: session.id }, data: { status: "failed", failReason: "paystack initialize failed" } })
-      .catch(() => undefined);
-    const message = err instanceof Error ? err.message : "Could not start payment";
-    const status = message.includes("not configured") ? 503 : 502;
-    return NextResponse.json({ error: message }, { status });
+    if (err instanceof PaymentConfigError || err instanceof PaystackError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    console.error("[payment-init] unexpected failure:", err);
+    return NextResponse.json({ error: "Could not start payment" }, { status: 500 });
   }
 }

@@ -36,6 +36,17 @@ async function main() {
   const existingTheme = await prisma.theme.findFirst({
     where: { devId: dev.id, name: "Minimal" },
   });
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@agora.test" },
+    update: { password: passwordHash, role: "admin" },
+    create: {
+      email: "admin@agora.test",
+      password: passwordHash,
+      role: "admin",
+    },
+  });
+  void admin; // role exists for /admin/payments; no further seeding needed
+
   const theme = existingTheme
     ? await prisma.theme.update({
         where: { id: existingTheme.id },
@@ -77,6 +88,7 @@ async function main() {
   console.log("Seed complete.");
   console.log("  dev@agora.test / password123  (developer)");
   console.log("  owner@agora.test / password123  (business_owner)");
+  console.log("  admin@agora.test / password123  (admin — sees /admin/payments)");
   console.log("  demo business subdomain: 'demo'");
 }
 

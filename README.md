@@ -104,7 +104,11 @@ npm run db:reset
   - `NEXTAUTH_URL` (e.g., `https://your-project.vercel.app`)
   - `ROOT_DOMAIN` (e.g., `your-project.vercel.app`)
   - `BLOB_READ_WRITE_TOKEN` (get this from Vercel Blob dashboard)
-  - `PAYSTACK_SECRET_KEY` (live key at launch; test key `sk_test_…` before). Production builds intentionally fail without it.
+  - `PAYMENT_PROVIDER` — `manual` (default/active) or `paystack`
+  - `MANUAL_BANK_NAME` / `MANUAL_BANK_ACCOUNT_NAME` / `MANUAL_BANK_ACCOUNT_NUMBER` — your real receiving account (required in production while `manual` is active)
+  - `CRON_SECRET` — required in production (payment crons are enabled in `vercel.json`)
+  - `PAYSTACK_SECRET_KEY` — only required when `PAYMENT_PROVIDER=paystack`
+  - `RESEND_API_KEY` / `RESEND_FROM_EMAIL` — optional; renewal reminders log until set
 
 ### 2. ⚠️ Important: subdomains on `.vercel.app`
 
@@ -167,6 +171,51 @@ Since real wildcard DNS only works once deployed, you'll need to simulate subdom
 3. Or skip webhooks entirely during manual testing — the confirm route self-verifies on return.
 
 **Acceptance checklist:** see the "Verify it yourself" flow: onboard with a test card → business appears at `<sub>.agora.test` (or `/sites/<sub>`) → dashboard shows Active + renew date → simulate `invoice.payment_failed` via the Paystack dashboard's event sender → banner appears, site stays live → `/dev` shows the subscriber row.
+
+## Phase 1.5: Manual payments (active) + provider switch
+
+Money now flows through **one interface, two interchangeable providers**
+(`PAYMENT_PROVIDER` env, default `manual`):
+
+- **`manual` (ACTIVE):** onboarding's last step shows **bank transfer
+  instructions** — real account details from env vars, an exact amount
+  (`theme.price + ₦5,000` hosting fee), and a copy-able collision-checked
+  reference `AGORA-XXXXXX` (unambiguous alphabet: no `O/0/I/1/L`). The owner
+  taps "I've made the transfer" (informational only). **No Business row
+  exists yet** — the validated draft + a `PendingPayment` record wait for you.
+  You check your bank statement, then click **Confirm** at `/admin/payments`
+  → business created, `active`, `nextBillingDate` +30d, subdomain live
+  instantly. Not matching? **Reject** with a reason (releases the subdomain
+  hold immediately). This click is the one human step; everything around it
+  is automatic.
+- **`paystack` (kept intact, unused for now):** the entire Phase 1 path —
+  hosted checkout, verified webhook, API re-verification, amount
+  reconciliation, `/onboard/callback` confirm — just sits behind the switch.
+  `/admin/payments` lists nothing because the Paystack path never creates
+  `PendingPayment` rows.
+
+**Renewals (semi-automatic):** Vercel Crons (`vercel.json`, UTC — 07:00 ≈
+08:00 WAT) run daily:
+`/api/cron/renewal-reminders` mints a fresh reference + `PendingPayment`
+(kind=`renewal`) for businesses due within 3 days and emails bank details to
+the owner (Resend if configured, otherwise clearly logged — never blocks);
+`/api/cron/past-due-sweep` flips businesses 5+ days overdue to `past_due` —
+**the site keeps rendering**; the dashboard shows a calm note, and suspension
+is a later decision. You confirm renewals in the same `/admin/payments` panel.
+Cron endpoints require `Authorization: Bearer $CRON_SECRET` (Vercel adds it
+automatically when the env var is set).
+
+**Migrating to Paystack later = set `PAYMENT_PROVIDER=paystack`** (+
+`PAYSTACK_SECRET_KEY`). Nothing else changes: the switch is read in one place
+(`getActiveProvider()`), the onboarding UI branches on the returned
+`instructions.type`, and both providers converge on the same
+`createBusinessFromDraft()` — one code path from validated draft to live
+Business, whatever triggered it.
+
+**Admin access:** the `admin` role already existed in the enum; the seed now
+creates `admin@agora.test` (dev only, same guarded seed file) — `/admin/payments`
+is role-gated server-side (`requireRole(["admin"])`), and the confirm/reject
+APIs re-check role + same-origin on every call.
 
 ## What's Next (Phase 2)
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole, prisma } from "@/lib/auth";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
+import { formatNaira } from "@/lib/money";
 import LogoUpload from "./logo-upload";
 import { ProfileForm } from "./profile-form";
 
@@ -59,6 +60,13 @@ export default async function DashboardPage() {
   const badge = subscriptionBadge(business.subscriptionStatus);
   const siteUrl = tenantSiteUrl(business.subdomain);
 
+  // Manual-provider queue: tell the owner exactly what they're waiting on.
+  const pendingPayment = await prisma.pendingPayment.findFirst({
+    where: { userId: user.id, status: { in: ["pending", "processing"] } },
+    orderBy: { createdAt: "desc" },
+    select: { reference: true, amountKobo: true, kind: true },
+  });
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -109,6 +117,21 @@ export default async function DashboardPage() {
             </p>
           </div>
         </section>
+
+        {pendingPayment && (
+          <section className="rounded-lg border border-sky-200 bg-sky-50 p-4">
+            <p className="text-sm text-sky-900">
+              {pendingPayment.kind === "renewal"
+                ? "Your renewal payment is awaiting confirmation — "
+                : "Your payment is awaiting confirmation — "}
+              reference{" "}
+              <span className="font-mono font-semibold">{pendingPayment.reference}</span>{" "}
+              for {formatNaira(pendingPayment.amountKobo)}. We check transfers
+              every business day; everything here updates automatically once
+              it&apos;s confirmed.
+            </p>
+          </section>
+        )}
 
         {/* Past-due: calm, actionable, no red-alert language */}
         {business.subscriptionStatus === "past_due" && (

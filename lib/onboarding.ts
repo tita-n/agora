@@ -12,6 +12,7 @@
  * reach the Business row.
  */
 import { prisma } from "./prisma";
+import { isPrismaUniqueError } from "./db-error";
 import { getVerifiedSuccessfulTransaction, PaystackError, CURRENCY } from "./paystack";
 import {
   draftSchema,
@@ -62,6 +63,37 @@ export async function subdomainOccupancyIssue(sub: string): Promise<string | nul
 export type FulfillResult =
   | { ok: true; businessId: string; alreadyDone?: boolean }
   | { ok: false; reason: string };
+
+/**
+ * The ONE materialization path from a validated draft to a live Business —
+ * used by Paystack fulfillment below AND by /api/admin/payments/confirm for
+ * manual transfers. Same fields, same "active + one month out" semantics,
+ * whichever trigger (gateway verification or admin button) got us here.
+ */
+export async function createBusinessFromDraft(input: {
+  userId: string;
+  payload: SessionPayload;
+  paystackCustomerCode?: string | null;
+}) {
+  const { payload } = input;
+  return prisma.business.create({
+    data: {
+      name: payload.name,
+      subdomain: payload.subdomain,
+      description: payload.description ?? null,
+      contactEmail: payload.contactEmail ?? null,
+      contactPhone: payload.contactPhone ?? null,
+      address: payload.address ?? null,
+      primaryColor: payload.primaryColor ?? null,
+      logoUrl: payload.logoUrl ?? null,
+      ownerId: input.userId,
+      themeId: payload.themeId,
+      subscriptionStatus: "active",
+      nextBillingDate: new Date(Date.now() + SUBSCRIPTION_PERIOD_MS),
+      paystackCustomerCode: input.paystackCustomerCode ?? null,
+    },
+  });
+}
 
 /**
  * Materialize a paid session into a live Business. Safe to call from the
@@ -154,22 +186,10 @@ export async function fulfillPaidSession(reference: string): Promise<FulfillResu
   }
 
   try {
-    const business = await prisma.business.create({
-      data: {
-        name: payload.name,
-        subdomain: payload.subdomain,
-        description: payload.description ?? null,
-        contactEmail: payload.contactEmail ?? null,
-        contactPhone: payload.contactPhone ?? null,
-        address: payload.address ?? null,
-        primaryColor: payload.primaryColor ?? null,
-        logoUrl: payload.logoUrl ?? null,
-        ownerId: session.userId,
-        themeId: payload.themeId,
-        subscriptionStatus: "active",
-        nextBillingDate: new Date(Date.now() + SUBSCRIPTION_PERIOD_MS),
-        paystackCustomerCode: tx.customerCode,
-      },
+    const business = await createBusinessFromDraft({
+      userId: session.userId,
+      payload,
+      paystackCustomerCode: tx.customerCode,
     });
     await prisma.onboardingSession.update({
       where: { id: session.id },
@@ -177,12 +197,8 @@ export async function fulfillPaidSession(reference: string): Promise<FulfillResu
     });
     return { ok: true, businessId: business.id };
   } catch (err) {
-    // Prisma unique-constraint code — subdomain race or duplicate businessId.
-    if (
-      typeof err === "object" &&
-      err !== null &&
-      (err as { code?: string }).code === "P2002"
-    ) {
+    if (isPrismaUniqueError(err)) {
+      // Prisma unique constraint — subdomain race or duplicate businessId.
       return markFailed("Subdomain was taken in the final moment. Contact support for a refund.");
     }
     throw err;

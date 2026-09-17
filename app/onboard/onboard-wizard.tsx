@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { uploadLogo } from "@/lib/blob-client";
 import { MinimalSite } from "@/components/themes/minimal-site";
+import { formatNaira } from "@/lib/money";
+import type { PaymentInstructions } from "@/lib/payments/types";
 
 /**
  * 4-step onboarding wizard. Holds the DRAFT in client state only — nothing
@@ -39,10 +41,6 @@ type SubdomainCheck =
   | { state: "ok" }
   | { state: "taken"; reason: string };
 
-function naira(kobo: number): string {
-  return `₦${(kobo / 100).toLocaleString("en-NG")}`;
-}
-
 export function OnboardWizard({
   userId,
   rootDomain,
@@ -63,6 +61,8 @@ export function OnboardWizard({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [issued, setIssued] = useState<PaymentInstructions | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
   const latestCheck = useRef(0);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
@@ -120,15 +120,20 @@ export function OnboardWizard({
         body: JSON.stringify(draft),
       });
       const json = (await res.json()) as {
-        authorizationUrl?: string;
+        instructions?: PaymentInstructions;
         error?: string;
         issues?: { path: string; message: string }[];
       };
-      if (!res.ok || !json.authorizationUrl) {
+      if (!res.ok || !json.instructions) {
         setPayError(json.issues?.[0]?.message ?? json.error ?? "Could not start payment");
         return;
       }
-      window.location.assign(json.authorizationUrl); // Paystack checkout
+      const ins = json.instructions;
+      if (ins.type === "checkout_redirect" && ins.redirectUrl) {
+        window.location.assign(ins.redirectUrl); // paystack provider: hosted page
+        return;
+      }
+      setIssued(ins); // manual provider: show transfer instructions
     } catch {
       setPayError("Network error — please try again.");
     } finally {
@@ -329,38 +334,87 @@ export function OnboardWizard({
 
           {step === 4 && (
             <section>
-              <h1 className="text-xl font-bold text-gray-900">Confirm &amp; pay</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Your site goes live the moment payment succeeds. The plan
-                renews monthly — you can cancel anytime from your dashboard.
-              </p>
-              <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
-                <Row label={`“${themeName}” theme — monthly`} value={naira(themePriceKobo)} />
-                <Row label="Hosting — monthly" value={naira(hostingFeeKobo)} />
-                <div className="flex items-center justify-between px-4 py-3 font-semibold">
-                  <dt>Total today</dt>
-                  <dd>{naira(totalKobo)}</dd>
-                </div>
-              </dl>
-              <div className="mt-3 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-500">
-                <span className="font-mono">{draft.subdomain}.{rootDomain}</span> →{" "}
-                {draft.name || "Your Business"}
-              </div>
-              {payError && (
-                <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
+              {acknowledged ? (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-2xl">✓</div>
+                  <h1 className="mt-4 text-xl font-bold text-gray-900">Thanks — we&apos;ll verify shortly</h1>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Transfers are checked and activated manually, usually the
+                    same business day. Nothing else is needed from you: as soon
+                    as your payment is confirmed your site goes live and your
+                    dashboard will show it. Keep your transfer receipt handy.
+                  </p>
+                  <a
+                    href="/dashboard"
+                    className="mt-6 inline-block rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Go to dashboard
+                  </a>
+                </>
+              ) : issued ? (
+                <>
+                  <h1 className="text-xl font-bold text-gray-900">Send your transfer</h1>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Transfer the exact amount below, with the reference as your
+                    transfer narration — that&apos;s how we match it to you.
+                  </p>
+                  <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
+                    <CopyRow label="Amount" value={formatNaira(issued.amountKobo)} />
+                    <CopyRow label="Bank" value={issued.bankName ?? "—"} noCopy />
+                    <CopyRow label="Account name" value={issued.accountName ?? "—"} noCopy />
+                    <CopyRow label="Account number" value={issued.accountNumber ?? "—"} />
+                    <CopyRow label="Reference" value={issued.reference ?? "—"} mono />
+                  </dl>
+                  {payError && (
+                    <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
+                  )}
+                  <button
+                    onClick={() => setAcknowledged(true)}
+                    className="mt-6 w-full rounded-md bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+                  >
+                    I&apos;ve made the transfer
+                  </button>
+                  <p className="mt-2 text-center text-xs text-gray-400">
+                    This just lets us know to look out for it — your site activates
+                    when we&apos;ve confirmed the payment.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-xl font-bold text-gray-900">Confirm &amp; pay</h1>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Your site is created the moment payment is confirmed.
+                  </p>
+                  <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
+                    <Row label={`"${themeName}" theme — monthly`} value={formatNaira(themePriceKobo)} />
+                    <Row label="Hosting — monthly" value={formatNaira(hostingFeeKobo)} />
+                    <div className="flex items-center justify-between px-4 py-3 font-semibold">
+                      <dt>Total</dt>
+                      <dd>{formatNaira(totalKobo)}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-500">
+                    <span className="font-mono">{draft.subdomain}.{rootDomain}</span> →{" "}
+                    {draft.name || "Your Business"}
+                  </div>
+                  {payError && (
+                    <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
+                  )}
+                  <div className="mt-6 flex items-center justify-between">
+                    <BackButton onClick={() => setStep(3)} />
+                    <button
+                      onClick={pay}
+                      disabled={paying}
+                      className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      {paying ? "Preparing…" : `Continue — ${formatNaira(totalKobo)}`}
+                    </button>
+                  </div>
+                </>
               )}
-              <div className="mt-6 flex items-center justify-between">
-                <BackButton onClick={() => setStep(3)} />
-                <button
-                  onClick={pay}
-                  disabled={paying}
-                  className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
-                >
-                  {paying ? "Redirecting to Paystack…" : `Pay ${naira(totalKobo)} & publish`}
-                </button>
-              </div>
             </section>
           )}
+
         </div>
       </div>
     </main>
@@ -373,6 +427,47 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1 block text-xs font-medium text-gray-600">{label}</span>
       {children}
     </label>
+  );
+}
+
+function CopyRow({
+  label,
+  value,
+  mono,
+  noCopy,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  noCopy?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable (permissions/http) — value is visible anyway
+    }
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-gray-600">
+      <dt className="shrink-0">{label}</dt>
+      <dd className="flex min-w-0 items-center gap-2">
+        <span className={`truncate ${mono ? "font-mono font-semibold text-gray-900" : "font-medium text-gray-900"}`}>
+          {value}
+        </span>
+        {!noCopy && (
+          <button
+            onClick={copy}
+            className="shrink-0 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-50"
+          >
+            {copied ? "copied ✓" : "copy"}
+          </button>
+        )}
+      </dd>
+    </div>
   );
 }
 

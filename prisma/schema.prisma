@@ -30,6 +30,7 @@ model Business {
   nextBillingDate    DateTime?
   paystackCustomerCode     String?
   paystackSubscriptionCode String?
+  pendingPayments    PendingPayment[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
@@ -52,13 +53,14 @@ model Business {
 model OnboardingSession {
   id        String   @id @default(cuid())
   userId    String
-  reference String   @unique // `aos_<uuid>` sent to Paystack & back
+  reference String   @unique // provider reference: `aos_<uuid>` (paystack) or `AGORA-XXXXXX` (manual)
   status    String   @default("initiated") // initiated | paid | business_created | failed
   payload   Json     // validated ONLY via draftSchema in lib/onboarding.ts
   paystackTxId String?
   businessId String?  @unique
   failReason String?
-  createdAt DateTime @default(now())
+  pendingPayment PendingPayment?
+  createdAt     DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User      @relation(fields: [userId], references: [id])
   business  Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
@@ -90,7 +92,44 @@ model User {
   businesses Business[]
   themes     Theme[]
   onboardingSessions OnboardingSession[]
+  pendingPayments      PendingPayment[]     @relation("PaymentSubmitter")
+  confirmedPayments    PendingPayment[]     @relation("PaymentConfirmer")
 
   // No @@index([email]) — @unique already provides the index (M-7).
   @@index([role])
+}
+
+/**
+ * A payment that a human must confirm (manual bank transfer) — the only
+ * provider flow that needs it; Paystack fulfills from its verified webhook.
+ *
+ * Holds the not-yet-created Business draft (via businessDraftId ->
+ * OnboardingSession) so NO Business row exists until an admin clicks
+ * Confirm. kind="renewal" records instead point at an existing business and
+ * carry no draft. reference is the payer's collision-checked AGORA-XXXXXX
+ * code; status drives the admin queue (pending -> confirmed | rejected).
+ */
+model PendingPayment {
+  id              String   @id @default(cuid())
+  reference       String   @unique
+  kind            String   @default("signup") // "signup" | "renewal"
+  amountKobo      Int
+  status          String   @default("pending") // pending | processing (claimed) | confirmed | rejected
+  rejectReason    String?
+  // signup -> the OnboardingSession holding the draft; renewal -> null
+  businessDraftId String?  @unique
+  // set only after Confirm: the Business this payment created/renewed
+  businessId      String?
+  confirmedById   String? // admin user who confirmed (audit trail)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  submittedBy   User       @relation("PaymentSubmitter", fields: [userId], references: [id])
+  userId        String
+  businessDraft OnboardingSession? @relation(fields: [businessDraftId], references: [id], onDelete: Cascade)
+  business      Business?  @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  confirmedBy   User?      @relation("PaymentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([status, kind])
+  @@index([userId])
 }
