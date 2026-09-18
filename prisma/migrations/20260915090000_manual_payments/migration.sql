@@ -7,6 +7,7 @@ CREATE TABLE "PendingPayment" (
     "kind" TEXT NOT NULL DEFAULT 'signup',
     "amountKobo" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
+    "userId" TEXT NOT NULL,
     "rejectReason" TEXT,
     "businessDraftId" TEXT,
     "businessId" TEXT,
