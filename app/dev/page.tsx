@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { requireRole, prisma } from "@/lib/auth";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
+import { UserNav } from "@/components/user-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +61,8 @@ export default async function DevPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto max-w-3xl">
+        <UserNav />
+
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Developer portal</h1>
@@ -153,11 +155,6 @@ export default async function DevPage() {
           Payouts (your 70% share) are transferred manually during Phase 1 —
           automation arrives with the payment provider work.
         </p>
-        <div className="mt-4">
-          <Link href="/" className="text-sm text-gray-400 hover:text-gray-900">
-            ← Back to Agora
-          </Link>
-        </div>
       </div>
     </main>
   );

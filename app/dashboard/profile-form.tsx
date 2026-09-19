@@ -64,7 +64,17 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
       <h2 className="text-sm font-semibold text-gray-700">Business profile</h2>
       <div className="mt-3 space-y-3">
         <Input label="Business name" value={values.name} onChange={(v) => set("name", v)} maxLength={80} />
-        <Input label="Description" value={values.description} onChange={(v) => set("description", v)} maxLength={500} />
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-500">Description</span>
+          <textarea
+            value={values.description}
+            onChange={(e) => set("description", e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="What you sell, who you are — 1–2 sentences."
+            className="w-full resize-y rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+          />
+        </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Contact email" value={values.contactEmail} onChange={(v) => set("contactEmail", v)} />
           <Input label="Phone" value={values.contactPhone} onChange={(v) => set("contactPhone", v)} />

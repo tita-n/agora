@@ -4,6 +4,7 @@ import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
 import { formatNaira } from "@/lib/money";
 import LogoUpload from "./logo-upload";
+import { UserNav } from "@/components/user-nav";
 import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,9 @@ export default async function DashboardPage() {
   if (!business) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <div className="w-full max-w-sm">
+          <UserNav />
+        </div>
         <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.email}</h1>
         <p className="mt-3 max-w-sm text-gray-500">
           You don&apos;t have a business site yet. Pick a subdomain, describe
@@ -49,9 +53,6 @@ export default async function DashboardPage() {
           className="mt-8 rounded-md bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-700"
         >
           Create your business site →
-        </Link>
-        <Link href="/" className="mt-6 text-sm text-gray-400 hover:text-gray-900">
-          ← Back to Agora
         </Link>
       </main>
     );
@@ -70,6 +71,8 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <UserNav />
+
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
@@ -170,11 +173,6 @@ export default async function DashboardPage() {
 
         <LogoUpload currentLogoUrl={business.logoUrl} />
 
-        <div>
-          <Link href="/" className="text-sm text-gray-400 hover:text-gray-900">
-            ← Back to Agora
-          </Link>
-        </div>
       </div>
     </main>
   );

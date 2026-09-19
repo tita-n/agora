@@ -1,13 +1,23 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Already signed in? Don't show the form. Rendering it over a live
+  // session is what let a second sign-in swap the cookie while other tabs
+  // and already-hydrated components still held the FIRST account — the
+  // "two accounts logged in at once" illusion. after-login routes by role,
+  // so the signed-in user lands exactly where their own session says.
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/api/auth/after-login");
+  }, [status, router]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,6 +41,14 @@ export default function LoginPage() {
       router.push("/api/auth/after-login");
       router.refresh();
     }
+  }
+
+  if (status === "authenticated") {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
+        Already signed in — taking you where you belong…
+      </main>
+    );
   }
 
   return (

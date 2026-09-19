@@ -1,4 +1,5 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { del } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -47,10 +48,35 @@ export async function POST(req: NextRequest) {
         // Defense in depth: the blob must live under the uploading user's prefix.
         if (!blob.pathname.startsWith(`logos/${userId}/`)) return;
 
+        // Read the superseded URL FIRST (before overwriting it).
+        const previous = await prisma.business.findUnique({
+          where: { id: businessId },
+          select: { logoUrl: true },
+        });
+
         await prisma.business.update({
           where: { id: businessId },
           data: { logoUrl: blob.url },
         });
+
+        // Cleanup runs strictly AFTER the new logo is persisted: if the new
+        // upload had failed we never get here, so a failed re-upload can
+        // never leave the business logo-less. First upload (no previous) is
+        // simply a no-op.
+        const old = previous?.logoUrl;
+        if (old && old !== blob.url && /\.public\.blob\.vercel-storage\.com\/|\.blob\.vercel-storage\.com\//.test(old)) {
+          try {
+            await del(old);
+          } catch (err) {
+            // Orphaned-but-harmless: the site is correct (points at the new
+            // blob); only storage is dirtied. Log for a sweep, don't fail the
+            // callback (a retry would not delete it any better).
+            console.warn(
+              `[blob-cleanup] could not delete superseded logo for business ${businessId}:`,
+              err instanceof Error ? err.message : err
+            );
+          }
+        }
       },
     });
     return NextResponse.json(data);
