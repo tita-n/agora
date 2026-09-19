@@ -63,6 +63,10 @@ export const manualProvider: PaymentProvider = {
           reference,
           kind: "signup",
           amountKobo,
+          // Phase 2 payout-ledger anchor: a signup's whole charge IS base
+          // (no overage concept before a business exists). DevPayout math
+          // recovers the theme price as baseKobo − hosting fee.
+          baseKobo: amountKobo,
           userId: business.userId,
           businessDraftId: session.id,
         },

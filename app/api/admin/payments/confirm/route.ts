@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
       });
       await prisma.pendingPayment.update({
         where: { id: payment.id },
-        data: { status: "confirmed", confirmedById: user.id },
+        // confirmedAt is the DevPayout window anchor — set exactly when the
+        // status flips, nowhere else.
+        data: { status: "confirmed", confirmedById: user.id, confirmedAt: new Date() },
       });
       return NextResponse.json({ ok: true, kind: "renewal" });
     }
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
     });
     await prisma.pendingPayment.update({
       where: { id: payment.id },
-      data: { status: "confirmed", businessId: business.id, confirmedById: user.id },
+      data: { status: "confirmed", businessId: business.id, confirmedById: user.id, confirmedAt: new Date() },
     });
 
     return NextResponse.json({ ok: true, kind: "signup", subdomain: business.subdomain });

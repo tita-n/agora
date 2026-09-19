@@ -8,6 +8,14 @@
     {
       "path": "/api/cron/past-due-sweep",
       "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron/usage-snapshot",
+      "schedule": "55 6 * * *"
+    },
+    {
+      "path": "/api/cron/dev-payouts",
+      "schedule": "0 6 1 * *"
     }
   ]
 }

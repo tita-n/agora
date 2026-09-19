@@ -3,6 +3,7 @@
  * imports so it can be unit-tested directly and reused later by
  * custom-domain resolution.
  */
+import { DOMAIN_HOST_RE } from "@/lib/domains";
 
 /**
  * Standard DNS-label rule: 1-63 chars, lowercase alphanumeric or hyphen,
@@ -38,6 +39,9 @@ export const RESERVED_SUBDOMAINS = new Set([
   "docs",
   "unauthorized",
   "sites",
+  // internal rewrite target for Phase 2 custom-domain serving: no business
+  // may own the subdomain the resolver route lives under
+  "tenant-host",
 ]);
 
 export type TenantRoute =
@@ -45,7 +49,14 @@ export type TenantRoute =
   | { kind: "main" }
   /** valid, non-reserved tenant label under the root domain */
   | { kind: "tenant"; subdomain: string }
-  /** must 404 — unknown host in strict mode, or malformed/reserved label */
+  /** foreign host in STRICT mode: custom-domain candidate (Phase 2) —
+   * rewritten to /tenant-host, which only serves when a DB-exact lookup of
+   * this hostname finds a VERIFIED business domain. Nothing is trusted from
+   * the host itself beyond normalization; an attacker pointing an
+   * arbitrary DNS record at Vercel reaches a 404, not content. */
+  | { kind: "tenantHost"; hostname: string }
+  /** must 404 — malformed/reserved label, or a hostname that is not even a
+   * syntactically valid domain (no DB lookup is wasted on it) */
   | { kind: "invalid" };
 
 /**
@@ -77,9 +88,27 @@ export function classifyHost(
     return { kind: "tenant", subdomain: sub };
   }
 
-  // Foreign host: 404 in strict mode, main app otherwise (dev convenience
-  // for localhost/preview environments).
-  return strict ? { kind: "invalid" } : { kind: "main" };
+  // Foreign host. Development/preview: main app (localhost convenience,
+  // unchanged). Production (Phase 2): a syntactically valid host becomes a
+  // CUSTOM-DOMAIN candidate — resolution still requires the verified DB
+  // match downstream. Anything not even shaped like a hostname 404s here,
+  // preserving M-2's "no content for unvalidated hosts" guarantee.
+  if (!strict) return { kind: "main" };
+  if (!DOMAIN_HOST_RE.test(hostname)) return { kind: "invalid" };
+  return { kind: "tenantHost", hostname };
+}
+
+/**
+ * Rewrite target for a custom-domain candidate request. The theme is a
+ * single page today — same as subdomain tenants, unknown sub-paths render
+ * the not-found page of that site (no fall-through to main-app routes).
+ */
+export function tenantHostRewritePath(requestPath: string): string {
+  const trimmed =
+    requestPath.length > 1 && requestPath.endsWith("/")
+      ? requestPath.slice(0, -1)
+      : requestPath;
+  return trimmed === "/" ? `/tenant-host` : `/tenant-host${trimmed}`;
 }
 
 /**

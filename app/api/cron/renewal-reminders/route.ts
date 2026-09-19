@@ -8,6 +8,8 @@ import { manualBankConfig } from "@/lib/payments/manual-format";
 import { formatNaira } from "@/lib/money";
 import { sendEmail, reminderEmailHtml } from "@/lib/email";
 import { tenantSiteUrl } from "@/lib/site-urls";
+import { SUBSCRIPTION_PERIOD_MS } from "@/lib/onboarding";
+import { calculateOverageKobo, overageLines, type UsageInputs } from "@/lib/billing/overage";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,14 @@ const REMIND_WITHIN_DAYS = 3;
  * instructions to the owner (or log them if email isn't wired up — by design
  * this feature never blocks on an email provider). Confirmation of renewals
  * happens in the SAME /admin/payments panel as signups.
+ *
+ * Phase 2: the amount is itemized — base (theme price + ₦5,000 hosting fee)
+ * plus the overage from the UsageRecord of the billing period closing at
+ * this business's nextBillingDate (refreshed that same morning by the
+ * usage-snapshot cron at 06:55 UTC). Overage is quoted against the usage
+ * numbers AS SNAPSHOTED (the detail is stored on the payment row), the bill
+ * is human-checked against the bank statement, and both the owner email and
+ * /admin/payments show the breakdown, not a lump sum.
  *
  * Dedup: a business never accumulates more than one live (pending/processing)
  * renewal row — the reminder repeats daily only while the previous one is
@@ -65,13 +75,45 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      let amountKobo: number;
+      let baseKobo: number;
       try {
-        amountKobo = chargeAmountKobo(b.theme?.price ?? 0); // same formula, same >0 guard
+        baseKobo = chargeAmountKobo(b.theme?.price ?? 0); // same formula, same >0 guard
       } catch {
         errors.push(`${b.subdomain}: theme price unset/invalid — skipped`);
         continue;
       }
+
+      // Overage from the period closing at nextBillingDate (within half a
+      // day's tolerance on the period start, in case the billing date was
+      // re-anchored); most recent snapshot wins. Absent record = no usage
+      // data = flat renewal, which is exactly right for a business whose
+      // plan has stayed dormant (see usage-snapshot header on dormancy).
+      const nb = b.nextBillingDate!;
+      const usageRecord = await prisma.usageRecord.findFirst({
+        where: {
+          businessId: b.id,
+          periodStart: {
+            gte: new Date(nb.getTime() - SUBSCRIPTION_PERIOD_MS - 12 * 60 * 60 * 1000),
+            lte: new Date(nb.getTime() - SUBSCRIPTION_PERIOD_MS + 12 * 60 * 60 * 1000),
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, bandwidthGb: true, blobStorageGb: true, blobTransferGb: true },
+      });
+
+      let overageKobo = 0;
+      let usage: UsageInputs | null = null;
+      let breakdown: ReturnType<typeof calculateOverageKobo> | null = null;
+      if (usageRecord) {
+        usage = {
+          bandwidthGb: usageRecord.bandwidthGb,
+          blobStorageGb: usageRecord.blobStorageGb,
+          blobTransferGb: usageRecord.blobTransferGb,
+        };
+        breakdown = calculateOverageKobo(usage);
+        overageKobo = breakdown.totalOverageKobo;
+      }
+      const amountKobo = baseKobo + overageKobo;
 
       const reference = await generateReference((ref) =>
         prisma.pendingPayment
@@ -79,10 +121,32 @@ export async function GET(req: NextRequest) {
           .then((r: { id: string } | null) => Boolean(r))
       );
       await prisma.pendingPayment.create({
-        data: { reference, kind: "renewal", amountKobo, userId: b.ownerId, businessId: b.id },
+        data: {
+          reference,
+          kind: "renewal",
+          amountKobo,
+          userId: b.ownerId,
+          businessId: b.id,
+          // breakdown persisted for audit + the admin panel's itemization;
+          // null on flat renewals so the UI can distinguish "₦0 because flat"
+          // (null) from "₦0 because usage data is dormant" (overageKobo: 0)
+          baseKobo,
+          overageKobo,
+          overageDetail: usage && breakdown ? { usage, breakdown, usageRecordId: usageRecord!.id } : undefined,
+        },
       });
 
       const bank = manualBankConfig();
+      const breakdownLines =
+        usage && breakdown && breakdown.totalOverageKobo > 0
+          ? [
+              { label: `Site plan (theme + hosting)`, amount: formatNaira(baseKobo) },
+              ...overageLines(usage, breakdown).map((l) => ({
+                label: l.label,
+                amount: formatNaira(l.kobo),
+              })),
+            ]
+          : undefined;
       const body = bank
         ? reminderEmailHtml({
             businessName: b.name,
@@ -92,6 +156,7 @@ export async function GET(req: NextRequest) {
             accountName: bank.accountName,
             accountNumber: bank.accountNumber,
             contactUrl: tenantSiteUrl(b.subdomain),
+            breakdownLines,
           })
         : `<p>Renewal ${reference} (${formatNaira(amountKobo)}) for ${b.name} — bank details not configured (MANUAL_BANK_* env).</p>`;
       await sendEmail({

@@ -6,6 +6,7 @@ import { formatNaira } from "@/lib/money";
 import LogoUpload from "./logo-upload";
 import { UserNav } from "@/components/user-nav";
 import { ProfileForm } from "./profile-form";
+import { DomainPanel } from "@/components/domain-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,10 @@ export default async function DashboardPage() {
       subscriptionStatus: true,
       nextBillingDate: true,
       paystackSubscriptionCode: true,
+      customDomain: true,
+      domainStatus: true,
+      domainError: true,
+      domainCheckedAt: true,
       theme: { select: { name: true } },
     },
   });
@@ -172,6 +177,13 @@ export default async function DashboardPage() {
         />
 
         <LogoUpload currentLogoUrl={business.logoUrl} />
+
+        <DomainPanel
+          domain={business.customDomain}
+          status={business.domainStatus}
+          error={business.domainError}
+          checkedAt={business.domainCheckedAt}
+        />
 
       </div>
     </main>

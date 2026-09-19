@@ -2,18 +2,29 @@ import { requireRole, prisma } from "@/lib/auth";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
 import { UserNav } from "@/components/user-nav";
+import { formatNaira } from "@/lib/money";
+import { payoutPeriodLabel } from "@/lib/billing/payouts";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Developer portal (Phase 1): read-only visibility into who subscribes to
- * your theme. Deliberately no payout automation yet — devs see their
- * numbers; the 70% transfer is manual until Phase 2.
+ * Developer portal. Phase 1: read-only visibility into who subscribes to
+ * your theme. Phase 2: the payout LEDGER is automated (the monthly cron
+ * computes 70% of your theme price across confirmed payments, per calendar
+ * month) — the money transfer itself stays manual, and the number shown
+ * here is the auditable record of it.
  *
  * One query, nested select (audit guidance: no N+1, never `include` on
  * User relations).
  */
 /** Shape of the nested query below (also documents what the table renders). */
+type DevPayoutRow = {
+  id: string;
+  amountKobo: number;
+  status: string;
+  paidAt: Date | null;
+  periodStart: Date;
+};
 type DevThemeRow = {
   id: string;
   name: string;
@@ -48,10 +59,17 @@ export default async function DevPage() {
           },
         },
       },
+      devPayouts: {
+        orderBy: { periodStart: "desc" },
+        take: 24,
+        select: { id: true, amountKobo: true, status: true, paidAt: true, periodStart: true },
+      },
     },
   });
 
   const themes: DevThemeRow[] = (dev?.themes ?? []) as DevThemeRow[];
+  const payouts: DevPayoutRow[] = ((dev as { devPayouts?: DevPayoutRow[] } | null)?.devPayouts ?? []) as DevPayoutRow[];
+  const owedTotal = payouts.filter((x) => x.status === "owed").reduce((s, x) => s + x.amountKobo, 0);
   const subscribers = themes.reduce((n, t) => n + t.businesses.length, 0);
   const active = themes.reduce(
     (n, t) => n + t.businesses.filter((b) => b.subscriptionStatus === "active").length,
@@ -151,10 +169,44 @@ export default async function DevPage() {
           ))
         )}
 
-        <p className="mt-8 text-xs text-gray-400">
-          Payouts (your 70% share) are transferred manually during Phase 1 —
-          automation arrives with the payment provider work.
-        </p>
+        <section className="mt-10 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="flex items-baseline justify-between border-b border-gray-100 px-5 py-4">
+            <h2 className="text-sm font-semibold text-gray-900">Payouts — your 70% share</h2>
+            <span className="text-sm text-gray-500">
+              owed now: <span className="font-semibold text-gray-900">{formatNaira(owedTotal)}</span>
+            </span>
+          </div>
+          {payouts.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-gray-400">
+              No payouts computed yet. A row appears after the first full
+              month following your first confirmed payment (computed on the
+              1st, covering the previous month).
+            </p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-2 font-medium">Period</th>
+                  <th className="px-5 py-2 font-medium">Amount</th>
+                  <th className="px-5 py-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {payouts.map((x) => (
+                  <tr key={x.id}>
+                    <td className="px-5 py-3 text-gray-900">{payoutPeriodLabel(new Date(x.periodStart))}</td>
+                    <td className="px-5 py-3 font-medium text-gray-900">{formatNaira(x.amountKobo)}</td>
+                    <td className="px-5 py-3 text-gray-500">
+                      {x.status === "paid"
+                        ? `paid ${x.paidAt ? formatDate(new Date(x.paidAt)) : ""}`
+                        : "owed — transfer arrives manually from Agora"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       </div>
     </main>
   );

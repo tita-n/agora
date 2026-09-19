@@ -73,6 +73,19 @@ const EnvSchema = z.object({
   // jobs log clearly when unset — this feature must not block on email.
   RESEND_API_KEY: z.string().min(10).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
+
+  // ── Platform APIs (Phase 2) ────────────────────────────────────────────
+  // Vercel team access token (vca_…) + project id, used ONLY server-side by:
+  //   - the usage-snapshot cron (Analytics daily-usage, a Pro-plan endpoint)
+  //   - the custom-domain routes (project Domains API)
+  // Both features degrade GRACEFULLY when unset (documented in README) —
+  // this is deliberately optional. But it is never half-configured: if one
+  // of the pair is present the other must be (enforced below, production).
+  VERCEL_ACCESS_TOKEN: z.string().min(10, "VERCEL_ACCESS_TOKEN looks truncated").optional(),
+  VERCEL_PROJECT_ID: z.string().min(1).optional(),
+  // Test seam (same role PAYSTACK_API_BASE_URL plays): unit tests point at
+  // a local mock. NEVER set this in production.
+  VERCEL_API_BASE_URL: z.string().url().optional(),
 })
 .superRefine((val, ctx) => {
   if (!isProd) return;
@@ -98,6 +111,14 @@ const EnvSchema = z.object({
     add(
       "CRON_SECRET",
       "CRON_SECRET is required in production (vercel.json ships enabled payment crons)"
+    );
+  }
+  // Platform-API pairing: a token without a project id (or the reverse)
+  // means a silent half-feature — fail fast in production instead.
+  if (Boolean(val.VERCEL_ACCESS_TOKEN) !== Boolean(val.VERCEL_PROJECT_ID)) {
+    add(
+      "VERCEL_PROJECT_ID",
+      "VERCEL_ACCESS_TOKEN and VERCEL_PROJECT_ID must be set together (usage analytics + custom domains)"
     );
   }
 });

@@ -54,6 +54,10 @@ export function reminderEmailHtml(params: {
   accountName: string;
   accountNumber: string;
   contactUrl: string;
+  /** Itemized renewal bill (Phase 2): when present, rendered between the
+   * greeting and the bank table so the owner sees WHY the total is what it
+   * is. Plain labels, pre-formatted amounts — this function only escapes. */
+  breakdownLines?: { label: string; amount: string }[];
 }): string {
   const e = (s: string) =>
     s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -62,6 +66,20 @@ export function reminderEmailHtml(params: {
   <p>Hi — the <strong>${e(params.businessName)}</strong> Agora subscription
   (${params.amountKobo}) is coming up. To keep your site live, send the
   amount to the account below with your reference as the transfer note.</p>
+  ${
+    params.breakdownLines
+      ? `<table style="border-collapse:collapse;margin:0 0 16px;font-size:14px">
+    <tr><td colspan="2" style="padding:6px 12px 2px;color:#6b7280;text-align:left">Your bill:</td></tr>
+    ${params.breakdownLines
+      .map(
+        (l) =>
+          `<tr><td style="padding:2px 12px;text-align:left">${e(l.label)}</td><td style="padding:2px 12px;text-align:right">${e(l.amount)}</td></tr>`
+      )
+      .join("")}
+    <tr><td style="padding:6px 12px 2px;font-weight:600;text-align:left">Total</td><td style="padding:6px 12px 2px;font-weight:600;text-align:right">${e(params.amountKobo)}</td></tr>
+  </table>`
+      : ""
+  }
   <table style="border-collapse:collapse;margin:16px 0">
     <tr><td style="padding:6px 12px;color:#6b7280">Bank</td><td style="padding:6px 12px"><strong>${e(params.bankName)}</strong></td></tr>
     <tr><td style="padding:6px 12px;color:#6b7280">Account name</td><td style="padding:6px 12px"><strong>${e(params.accountName)}</strong></td></tr>

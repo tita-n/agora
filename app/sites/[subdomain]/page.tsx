@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { MinimalSite } from "@/components/themes/minimal-site";
 import { mainAppUrl } from "@/lib/site-urls";
+import { env } from "@/lib/env";
 
 /**
  * Tenant site (Phase 1): renders the real "Minimal" theme from the
@@ -29,6 +31,9 @@ const tenantSiteSelect = {
   contactEmail: true,
   contactPhone: true,
   address: true,
+  // Phase 2 canonical-host decision inputs:
+  customDomain: true,
+  domainStatus: true,
 } as const;
 
 export default async function SitePage({ params }: { params: Promise<{ subdomain: string }> }) {
@@ -44,6 +49,24 @@ export default async function SitePage({ params }: { params: Promise<{ subdomain
   });
 
   if (!business) notFound();
+
+  // SEO canonicalization (Phase 2): once a custom domain is VERIFIED, the
+  // subdomain URL permanently redirects to it instead of duplicating the
+  // content at both hosts. 308 via permanentRedirect (preserves method).
+  // Deliberately scoped to requests that arrived ON the subdomain host —
+  // internal render paths (/sites/... direct previews) must never bounce.
+  if (business.domainStatus === "verified" && business.customDomain) {
+    const host = ((await headers()).get("host") || "").split(":")[0].toLowerCase();
+    const root = (env.ROOT_DOMAIN || "agora.test").split(":")[0].toLowerCase();
+    if (host === `${subdomain}.${root}`) {
+      // The Minimal theme is single-page — every sub-path 404s on the
+      // tenant host already (no catch-all route exists), so the only
+      // request that reaches this point is the site root. When the theme
+      // grows real routes, restore the original path here (the middleware
+      // rewrite preserves it under /sites/<sub>…) and update this line.
+      permanentRedirect(`https://${business.customDomain}/`);
+    }
+  }
 
   return <MinimalSite data={business} agoraHref={mainAppUrl()} />;
 }

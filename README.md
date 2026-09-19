@@ -1,3 +1,65 @@
+
+## Phase 2 — usage, overage, custom domains, payout ledger
+
+**Usage & overage.** One `UsageRecord` per business per billing period
+(`[nextBillingDate − 30d, nextBillingDate)`), upserted daily by
+`/api/cron/usage-snapshot` (06:55 UTC, five minutes before the renewal
+cron, so a bill that goes out today prices against this morning's
+snapshot). Per-field sources, and what is live today:
+  • `blobStorageGb` — EXACT always: Blob SDK `listAll` over the owner's
+    `logos/<userId>/` prefix (decimal GB). Overage on this is live from
+    day one.
+  • `bandwidthGb` — Vercel Analytics `daily-usage` when
+    `VERCEL_ACCESS_TOKEN`+`VERCEL_PROJECT_ID` are set (Pro-plan endpoint)
+    AND Vercel reports the business's host as its own domain entry.
+    Unset/plan-limited/host-not-reported → the previous value is KEPT,
+    never zeroed: bandwidth overage is DORMANT (₦0), not estimated.
+  • `blobTransferGb` — no per-business platform source exists; the value
+    is operator-seeded (`UPDATE "UsageRecord" SET "blobTransferGb" = 40 …`)
+    and likewise kept, never guessed.
+Every cron log line states `source` per field; the day you upgrade to
+Pro is the auditable point numbers flip to `[api]`.
+**Unit-check on first real run:** the parser assumes `dataTransferred` is
+BYTES (÷1e9 → GB) — on the first Analytics-powered snapshot, compare one
+business against Vercel's Usage dashboard; the single conversion constant
+is in `lib/vercel/analytics.ts`.
+FUP (final model, in `lib/billing/overage.ts`): 6 GB bandwidth / 5 MB
+storage / 2 GB transfer included; ₦500/₦100/₦200 per GB over. Reference
+test: e-commerce profile (10 GB, 0.146 GB, 40 GB) → ₦2,000 + ~₦14 +
+₦7,600 = **₦9,614** (`npm run test:phase2`). Renewal PendingPayments store
+`baseKobo`/`overageKobo`/`overageDetail` — both the reminder email and
+/admin/payments show the itemization, never a bare lump sum.
+
+**Custom domains.** Owners enter a domain on the dashboard → normalized +
+validated (`lib/domains.ts`), claimed `@unique` across businesses, and
+(best-effort) attached to the Vercel project. `domainStatus` becomes
+`verified` ONLY from Vercel's project-domain record (DNS + TLS — never
+inferred from our own DNS lookups). Verified flips two things at once:
+the middleware routes the host to `/tenant-host` (production only; dev
+and preview behavior unchanged) and the Agora subdomain 308s to the
+custom domain so content is never duplicated. DNS guidance shown to
+owners is the copy-approved plain-language block in
+`components/domain-panel.tsx` — treat wording changes as copy reviews.
+
+**Dev payouts.** Monthly cron `/api/cron/dev-payouts` (06:00 UTC on the
+1st) computes, per dev: Σ floor(0.7 × theme price) over payments
+CONFIRMED in the previous calendar month — the ₦5,000 hosting fee and all
+overage stay platform revenue (settled split policy). Price comes from the
+payment row (`baseKobo − fee`), so a mid-month reprice can't rewrite
+history; rows without `baseKobo` (pre-Phase-2 confirmations) are counted
+in `skippedNoBase` and deliberately not backfilled — the ledger starts at
+Phase 2. `owed` rows self-heal on re-runs; `paid` rows are immutable, and
+marking paid lives at `/admin/payouts` (same manual-confirm trust model).
+Known gap: if `PAYMENT_PROVIDER=paystack` is ever enabled, its webhook
+fulfillment mints no `PendingPayment` ledger row yet — payouts would
+undercount; wire a confirmed-row insert into `fulfillPaidSession` before
+switching over.
+
+**Testing heavy-usage acceptance by hand:** `UPDATE "UsageRecord" SET
+"bandwidthGb"=10,"blobStorageGb"=0.146,"blobTransferGb"=40, "overageKobo"=961410 WHERE "businessId"='…';`
+then run the renewal cron — the payment row + email carry the three
+itemized lines (or set the usage numbers and let the snapshot cron recompute).
+
 # Agora - Multi-Tenant SaaS Platform (Phase 0)
 
 A technical skeleton for a multi-tenant SaaS platform where small businesses subscribe to website "themes" built by developers. Phase 0 focuses on the technical foundation only.

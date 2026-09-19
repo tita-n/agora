@@ -20,10 +20,48 @@ interface PendingRow {
   kind: string;
   status: string;
   amountKobo: number;
+  baseKobo: number | null;
+  overageKobo: number | null;
+  overageDetail: unknown;
   createdAt: Date;
   businessDraft: { payload: unknown } | null;
   business: { name: string; subdomain: string } | null;
   submittedBy: { email: string | null };
+}
+
+/**
+ * "base + usage" itemization for renewal rows (Phase 2). Numbers come from
+ * the PendingPayment columns; the stored JSON is only consulted for the
+ * per-resource lines and is parsed defensively — display code must never
+ * crash over an unexpected shape, worst case it shows the two totals only.
+ */
+function OverageNote({
+  baseKobo,
+  overageKobo,
+  detail,
+}: {
+  baseKobo: number;
+  overageKobo: number;
+  detail: unknown;
+}) {
+  const usage = (detail as { usage?: Record<string, unknown> } | null)?.usage;
+  const read = (k: string) =>
+    typeof usage?.[k] === "number" && Number.isFinite(usage[k] as number)
+      ? `${(usage[k] as number).toFixed(2)} GB`
+      : null;
+  const parts = [
+    read("bandwidthGb") && `bandwidth ${read("bandwidthGb")}`,
+    read("blobStorageGb") && `storage ${read("blobStorageGb")}`,
+    read("blobTransferGb") && `transfer ${read("blobTransferGb")}`,
+  ].filter(Boolean) as string[];
+  return (
+    <span className="block text-xs text-gray-500">
+      base {formatNaira(baseKobo)} + usage {formatNaira(overageKobo)}
+      {parts.length > 0 && (
+        <span className="block text-[11px] text-gray-400">{parts.join(" · ")}</span>
+      )}
+    </span>
+  );
 }
 
 function humanizeAge(createdAt: Date): string {
@@ -45,6 +83,9 @@ export default async function AdminPaymentsPage() {
       reference: true,
       kind: true,
       amountKobo: true,
+      baseKobo: true,
+      overageKobo: true,
+      overageDetail: true,
       status: true,
       createdAt: true,
       businessDraft: { select: { payload: true } },
@@ -61,6 +102,9 @@ export default async function AdminPaymentsPage() {
       kind: p.kind as "signup" | "renewal",
       status: p.status,
       amountKobo: p.amountKobo,
+      baseKobo: p.baseKobo,
+      overageKobo: p.overageKobo,
+      overageDetail: p.overageDetail,
       age: humanizeAge(p.createdAt),
       businessName: p.kind === "renewal" ? p.business?.name ?? "(deleted business)" : draft?.name ?? "(draft unreadable)",
       subdomain: p.kind === "renewal" ? p.business?.subdomain ?? "—" : draft?.subdomain ?? "—",
@@ -115,7 +159,12 @@ export default async function AdminPaymentsPage() {
                       <span className="font-medium text-gray-900">{r.businessName}</span>
                       <span className="block font-mono text-xs text-gray-400">{r.subdomain}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{formatNaira(r.amountKobo)}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-900">{formatNaira(r.amountKobo)}</span>
+                      {r.overageKobo != null && r.overageKobo > 0 && r.baseKobo != null && (
+                        <OverageNote baseKobo={r.baseKobo} overageKobo={r.overageKobo} detail={r.overageDetail} />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-500">{r.payerEmail}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {r.age}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { env } from "@/lib/env";
-import { classifyHost, tenantRewritePath } from "@/lib/tenant";
+import { classifyHost, tenantRewritePath, tenantHostRewritePath } from "@/lib/tenant";
 
 /**
  * Agora multi-tenant subdomain routing (findings M-1 / M-2).
@@ -13,8 +13,11 @@ import { classifyHost, tenantRewritePath } from "@/lib/tenant";
  *     the root — malformed, nested like a.b, or reserved like admin — 404s
  *     immediately instead of falling through to the main app)
  *  - any other host                              -> main app in development;
- *    in production, 404 (host allowlist) so unattached/mispointed domains
- *    never render the app, the login form included.
+ *    in production, a CUSTOM-DOMAIN candidate (Phase 2): rewritten to
+ *    /tenant-host, which serves content ONLY after a DB-exact,
+ *    verified-domain lookup of this host — an unattached or unverified host
+ *    still gets a 404, never the main app (the M-2 guarantee is preserved,
+ *    just with one validated extra resolution path).
  *
  * Existence of the tenant itself is still resolved by the page via the DB —
  * a syntactically valid but unknown tenant (evil.agora.test) renders the
@@ -46,6 +49,14 @@ export function middleware(req: NextRequest) {
 
   if (route.kind === "main") return NextResponse.next();
   if (route.kind === "invalid") return tenantNotFound();
+
+  // Custom-domain candidate (production only — in dev/preview foreign
+  // hosts remain main-app for convenience, exactly as before Phase 2).
+  if (route.kind === "tenantHost") {
+    const url = req.nextUrl.clone();
+    url.pathname = tenantHostRewritePath(url.pathname);
+    return NextResponse.rewrite(url);
+  }
 
   // Rewrite to the tenant site route, preserving the request's sub-path so
   // tenant hosts can later expose their own routes (/pricing, /catalog, ...).

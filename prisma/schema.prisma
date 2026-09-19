@@ -31,6 +31,15 @@ model Business {
   paystackCustomerCode     String?
   paystackSubscriptionCode String?
   pendingPayments    PendingPayment[]
+  usageRecords   UsageRecord[]
+  // Custom domain (Phase 2). customDomain itself is the pre-existing
+  // @unique field that was unused until now. domainStatus: "none" |
+  // "pending" | "verified" | "failed" — "verified" is what gates BOTH
+  // tenant-host serving and the subdomain->domain redirect. domainError
+  // carries the last human-readable failure (API or verification).
+  domainStatus    String    @default("none")
+  domainError     String?
+  domainCheckedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
@@ -94,6 +103,8 @@ model User {
   onboardingSessions OnboardingSession[]
   pendingPayments      PendingPayment[]     @relation("PaymentSubmitter")
   confirmedPayments    PendingPayment[]     @relation("PaymentConfirmer")
+  devPayouts       DevPayout[] @relation("DevPayouts")
+  confirmedPayouts DevPayout[] @relation("PayoutConfirmer")
 
   // No @@index([email]) — @unique already provides the index (M-7).
   @@index([role])
@@ -121,6 +132,15 @@ model PendingPayment {
   // set only after Confirm: the Business this payment created/renewed
   businessId      String?
   confirmedById   String? // admin user who confirmed (audit trail)
+  // Phase 2 renewal itemization: amountKobo = baseKobo + overageKobo for
+  // kind="renewal" rows that had usage overage; null on signup rows and on
+  // renewals with no overage data (flat-fee renewals). overageDetail is the
+  // exact UsageRecord numbers the amount was built from, stored for audit —
+  // rendered by /admin/payments, never trusted as an input anywhere.
+  baseKobo      Int?
+  overageKobo   Int?
+  overageDetail Json?
+  confirmedAt   DateTime? // set when status flips to confirmed — the window anchor for DevPayout calculation
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -132,4 +152,58 @@ model PendingPayment {
 
   @@index([status, kind])
   @@index([userId])
+}
+/**
+ * Per-business, per-billing-period usage snapshot (Phase 2). ONE row per
+ * (businessId, periodStart): the daily usage-snapshot cron upserts the row
+ * for the CURRENT period, so at renewal time the row that closes is already
+ * as fresh as that morning's snapshot. overageKobo is the pure
+ * calculateOverageKobo() of the stored usage — kept denormalized so a later
+ * FUP rate change can never silently rewrite history of an already-quoted
+ * bill. bandwidthGb/blobTransferGb may be operator-seeded (manual UPDATE)
+ * until Vercel Analytics can attribute them per host; blobStorageGb is
+ * measured exactly from the Blob store. See README "Usage & overage".
+ */
+model UsageRecord {
+  id              String   @id @default(cuid())
+  businessId      String
+  periodStart     DateTime
+  periodEnd       DateTime
+  bandwidthGb     Float    @default(0)
+  blobStorageGb   Float    @default(0)
+  blobTransferGb  Float    @default(0)
+  overageKobo     Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId, periodStart])
+}
+
+/**
+ * Monthly developer payout ledger row (Phase 2): amountKobo = sum over the
+ * dev's theme price in every payment CONFIRMED in [periodStart, periodEnd)
+ * of floor(0.7 × theme.price) — platform keeps the ₦5,000 fee and 100% of
+ * usage overage (decided explicitly; not reinterpretation-able). Rows are
+ * recomputable while "owed" (cron or re-run overwrites amount), frozen once
+ * "paid" by an admin on /admin/payouts — the same manual-confirm trust model
+ * as PendingPayment, not a new one. NOTE: only payments recorded as
+ * PendingPayment rows enter this ledger; that is the entire manual-provider
+ * flow, and Paystack-mode fulfillment does not mint ledger rows yet (see
+ * README, known limitation if PAYMENT_PROVIDER=paystack is ever enabled).
+ */
+model DevPayout {
+  id           String   @id @default(cuid())
+  devId        String
+  periodStart  DateTime
+  periodEnd    DateTime
+  amountKobo   Int      // 70% of dev's price, across all their businesses' confirmed payments this period
+  status       String   @default("owed") // "owed" | "paid"
+  paidAt       DateTime?
+  paidById     String?
+
+  dev      User  @relation("DevPayouts", fields: [devId], references: [id])
+  paidBy   User? @relation("PayoutConfirmer", fields: [paidById], references: [id], onDelete: SetNull)
+
+  @@index([devId, status])
 }
