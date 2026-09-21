@@ -86,16 +86,31 @@ export async function GET(req: NextRequest) {
 
       const existing = await prisma.usageRecord.findFirst({
         where: { businessId: b.id, periodStart },
-        select: { id: true, bandwidthGb: true, blobStorageGb: true, blobTransferGb: true },
+        select: {
+          id: true,
+          bandwidthGb: true,
+          blobStorageGb: true,
+          blobTransferGb: true,
+          sources: true,
+        },
       });
+      // prior provenance survives as the default; each branch below overwrites
+      // only what THIS run actually measured. The UI maps the four tokens.
+      type Sources = Record<string, string>;
+      const priorSources = (existing?.sources ?? {}) as Sources;
+      const sources: Sources = {
+        bandwidthGb: existing ? priorSources.bandwidthGb ?? "kept" : "not-measured",
+        blobStorageGb: existing ? priorSources.blobStorageGb ?? "kept" : "not-measured",
+        blobTransferGb: existing ? priorSources.blobTransferGb ?? "kept" : "not-measured",
+      };
 
       // ── blob storage: exact via SDK (kept on transient failure) ────────
       let blobStorageGb = existing?.blobStorageGb ?? 0;
-      let storageSource = "kept";
+      let storageSource = sources.blobStorageGb;
       const blob = await ownerBlobBytes(b.ownerId);
       if (blob.status === "ok") {
         blobStorageGb = bytesToGb(blob.bytes);
-        storageSource = `sdk(${blob.blobs} blobs)`;
+        sources.blobStorageGb = storageSource = "blob-sdk";
       } else if (blob.status === "unavailable") {
         storageSource = `kept(${blob.reason})`;
       }
@@ -109,6 +124,7 @@ export async function GET(req: NextRequest) {
         const matched = [...hosts].map((h) => analytics.hosts[h]).filter(Boolean);
         if (matched.length > 0) {
           bandwidthGb = matched.reduce((s, h) => s + h.bandwidthGb, 0);
+          sources.bandwidthGb = "api";
           bandSource = analyticsNote;
         } else {
           bandSource = "kept(no host in response)";
@@ -129,12 +145,12 @@ export async function GET(req: NextRequest) {
       if (existing) {
         await prisma.usageRecord.update({
           where: { id: existing.id },
-          data: { periodEnd, bandwidthGb, blobStorageGb, blobTransferGb, overageKobo },
+          data: { periodEnd, bandwidthGb, blobStorageGb, blobTransferGb, overageKobo, sources },
         });
         updated++;
       } else {
         await prisma.usageRecord.create({
-          data: { businessId: b.id, periodStart, periodEnd, bandwidthGb, blobStorageGb, blobTransferGb, overageKobo },
+          data: { businessId: b.id, periodStart, periodEnd, bandwidthGb, blobStorageGb, blobTransferGb, overageKobo, sources },
         });
         created++;
       }

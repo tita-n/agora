@@ -7,6 +7,8 @@ import LogoUpload from "./logo-upload";
 import { UserNav } from "@/components/user-nav";
 import { ProfileForm } from "./profile-form";
 import { DomainPanel } from "@/components/domain-panel";
+import { UsageSummary, type UsageRecordView } from "@/components/usage-summary";
+import { SUBSCRIPTION_PERIOD_MS } from "@/lib/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +74,43 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
     select: { reference: true, amountKobo: true, kind: true },
   });
+
+  // Current-period usage snapshot, if one exists (written daily by the
+  // usage-snapshot cron; may also be a hand-seeded test row). Same
+  // window logic as the renewal cron so the owner sees the exact numbers
+  // the bill will be built from; businesses without a billing date (never
+  // activated) fall back to their most recent record.
+  let usageRecord: UsageRecordView | null = null;
+  const usageSelect = {
+    periodStart: true,
+    periodEnd: true,
+    bandwidthGb: true,
+    blobStorageGb: true,
+    blobTransferGb: true,
+    overageKobo: true,
+    sources: true,
+  } as const;
+  if (business.nextBillingDate) {
+    const nb = new Date(business.nextBillingDate).getTime();
+    usageRecord = (await prisma.usageRecord.findFirst({
+      where: {
+        businessId: business.id,
+        periodStart: {
+          gte: new Date(nb - SUBSCRIPTION_PERIOD_MS - 12 * 60 * 60 * 1000),
+          lte: new Date(nb - SUBSCRIPTION_PERIOD_MS + 12 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      select: usageSelect,
+    })) as UsageRecordView | null;
+  }
+  if (!usageRecord) {
+    usageRecord = (await prisma.usageRecord.findFirst({
+      where: { businessId: business.id },
+      orderBy: { periodStart: "desc" },
+      select: usageSelect,
+    })) as UsageRecordView | null;
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
@@ -177,6 +216,8 @@ export default async function DashboardPage() {
         />
 
         <LogoUpload currentLogoUrl={business.logoUrl} />
+
+        <UsageSummary record={usageRecord} />
 
         <DomainPanel
           domain={business.customDomain}

@@ -173,6 +173,13 @@ model UsageRecord {
   blobStorageGb   Float    @default(0)
   blobTransferGb  Float    @default(0)
   overageKobo     Int      @default(0)
+  // Per-field provenance written by the usage-snapshot cron: how EACH number
+  // got here — "api" (Vercel Analytics, authoritative), "blob-sdk" (exact
+  // store measurement), "kept" (previous value preserved because no new
+  // source), "not-measured" (still a placeholder 0). The dashboard renders
+  // this so "₦0 because measured-and-fair-use" is never confused with "₦0
+  // because nothing measured it yet". null = row written by hand (SQL seed).
+  sources         Json?
   createdAt       DateTime @default(now())
 
   business Business @relation(fields: [businessId], references: [id])
