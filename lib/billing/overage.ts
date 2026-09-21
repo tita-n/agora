@@ -35,13 +35,19 @@ export const OVERAGE_RATES_KOBO_PER_GB = {
   blobTransfer: 20_000,
 } as const;
 
-export interface UsageInputs {
+// TYPE ALIASES, not interfaces — deliberate: PendingPayment.overageDetail
+// stores these directly into a Prisma Json column, and Prisma's
+// InputJsonValue requires an implicit index signature, which TypeScript
+// derives for object type aliases but NEVER for interfaces. (A Vercel build
+// failed on exactly this; converting back to interfaces would reintroduce
+// it.) Keep members JSON-safe: numbers/strings only.
+export type UsageInputs = {
   bandwidthGb: number;
   blobStorageGb: number;
   blobTransferGb: number;
 }
 
-export interface OverageBreakdown {
+export type OverageBreakdown = {
   bandwidthOverageKobo: number;
   storageOverageKobo: number;
   transferOverageKobo: number;
