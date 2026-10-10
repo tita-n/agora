@@ -3,6 +3,12 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { env } from "./env";
+import {
+  AUTH_INFRA_ERROR_CODE,
+  authLogContext,
+  classifyThrown,
+  normalizeEmail,
+} from "./auth-errors";
 
 /**
  * NextAuth configuration only (finding L-2). The route handler instance
@@ -19,43 +25,42 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = normalizeEmail(credentials?.email);
+        const password = credentials?.password;
+        if (!email || typeof password !== "string" || !password) return null;
 
         let user;
         try {
           user = await prisma.user.findUnique({
-            where: { email: credentials.email },
+            where: { email },
+            select: { id: true, email: true, role: true, password: true },
           });
         } catch (err) {
-          // DB unreachable etc. (finding M-12): log server-side — never the
-          // credentials — and fail closed to the generic error.
-          console.error(
-            "[auth] login lookup failed:",
-            err instanceof Error ? err.message : err
-          );
-          return null;
+          // Data-layer failure (M-12): report DISTINCTLY now (Part 2) —
+          // a DB blip must not masquerade as a wrong password. NextAuth v4
+          // (core/routes/callback.js) turns a thrown Error's message into
+          // the client-visible error value, so we throw a FIXED code — the
+          // underlying error never reaches the client; the log carries a
+          // stage tag only: never the email, never a hash, never anything
+          // that could echo user input.
+          console.error(authLogContext("lookup", classifyThrown(err)));
+          throw new Error(AUTH_INFRA_ERROR_CODE);
         }
-        if (!user) return null;
+        if (!user) return null; // exact same generic outcome as a wrong password
 
+        let valid = false;
         try {
-          const valid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
-          if (!valid) return null;
+          valid = await bcrypt.compare(password, user.password);
         } catch (err) {
-          console.error(
-            "[auth] password comparison failed:",
-            err instanceof Error ? err.message : err
-          );
-          return null;
+          // bcrypt throws on a malformed stored hash — that IS an
+          // infrastructure/data problem, not the user's password being wrong.
+          console.error(authLogContext("hash-compare", classifyThrown(err)));
+          throw new Error(AUTH_INFRA_ERROR_CODE);
         }
+        if (!valid) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        };
+        const { id, email: e, role } = user;
+        return { id, email: e, role };
       },
     }),
   ],

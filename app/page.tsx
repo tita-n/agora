@@ -16,7 +16,17 @@ export default async function HomePage() {
   const user = await getCurrentUser();
 
   const destination =
-    user?.role === "developer" ? "/dev" : "/dashboard";
+    user?.role === "admin"
+      ? "/admin"
+      : user?.role === "developer"
+        ? "/dev"
+        : "/dashboard";
+  const ctaLabel =
+    user?.role === "admin"
+      ? "Admin dashboard"
+      : user?.role === "developer"
+        ? "Developer portal"
+        : "Go to dashboard";
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center text-center px-4">
@@ -35,7 +45,7 @@ export default async function HomePage() {
               href={destination}
               className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
             >
-              Go to dashboard
+              {ctaLabel}
             </Link>
             {user.email && (
               <span className="self-center text-xs text-gray-400">

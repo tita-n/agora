@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireRole, prisma } from "@/lib/auth";
 import { parseSessionPayload } from "@/lib/onboarding";
 import { formatNaira } from "@/lib/money";
@@ -118,11 +117,6 @@ export default async function AdminPaymentsPage() {
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">Payment confirmations</h1>
-          <p className="text-xs text-gray-400">
-            <Link href="/admin/payouts" className="underline hover:text-gray-600">Payouts</Link>
-            {" · "}
-            <Link href="/admin/ops" className="underline hover:text-gray-600">Operations</Link>
-          </p>
         </div>
         <p className="mt-1 text-sm text-gray-500">
           Manual bank transfers waiting on you. Check each against your bank

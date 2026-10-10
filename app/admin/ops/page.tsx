@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { UserNav } from "@/components/user-nav";
 import { RunButton } from "./run-button";
@@ -58,18 +57,7 @@ export default async function AdminOpsPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto max-w-3xl">
         <UserNav />
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-2xl font-bold text-gray-900">Operations</h1>
-          <p className="text-xs text-gray-400">
-            <Link href="/admin/payments" className="underline hover:text-gray-600">
-              Payments
-            </Link>{" "}
-            ·{" "}
-            <Link href="/admin/payouts" className="underline hover:text-gray-600">
-              Payouts
-            </Link>
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Operations</h1>
         <p className="mt-1 text-sm text-gray-500">
           Manual triggers for the background jobs — for testing through the
           browser. This is <span className="font-semibold">not</span> the

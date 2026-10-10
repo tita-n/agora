@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireRole, prisma } from "@/lib/auth";
 import { formatNaira } from "@/lib/money";
 import { formatDate } from "@/lib/subscription";
@@ -59,11 +58,6 @@ export default async function AdminPayoutsPage() {
         <UserNav />
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">Developer payouts</h1>
-          <p className="text-xs text-gray-400">
-            <Link href="/admin/payments" className="underline hover:text-gray-600">Payments</Link>
-            {" · "}
-            <Link href="/admin/ops" className="underline hover:text-gray-600">Operations</Link>
-          </p>
         </div>
         <p className="mt-1 text-sm text-gray-500">
           Computed from confirmed payments (70% of each dev&apos;s theme

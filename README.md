@@ -1,4 +1,72 @@
 
+## Login diagnostics, admin bootstrap, and the test-account exposure
+
+**If login fails on a deployment, diagnose before changing anything:**
+
+```bash
+DATABASE_URL="<the deployment's connection string>" npm run diagnose:auth
+```
+
+Read-only. Prints: the DB host+name it inspected (never credentials), applied
+vs pending migrations, presence of every column added since Phase 1.5 (the
+`P2022` tripwires), the `Role` enum values, and for each `@agora.test`
+account its role + whether a bcrypt hash exists + whether it matches the
+seeded test password — booleans only, no hashes ever. A line saying
+`test accounts: NONE` means the users were seeded into a *different*
+database (the usual story: seed refuses to run in production BY DESIGN, so
+local `.env`-time seeding never reaches the deployed DB).
+
+**Migrations are never run by the Vercel build** — `build` is plain
+`next build`; `postinstall` only runs `prisma generate`. Apply them yourself
+against the intended DB whenever a release adds a migration:
+
+```bash
+DATABASE_URL="<production connection string>" npx prisma migrate deploy
+```
+
+Recommendation for previews: point the **Preview** environment's
+`DATABASE_URL` (Vercel → Settings → Environment Variables, scope Preview) at
+a throwaway DB (a Neon branch is ideal), never at production — otherwise any
+future automation that *does* migrate at build time, or any local
+`db:reset`-style habit leaking into CI, would run schema mutations against
+real data on every PR preview. Scoping env vars per environment is the guard;
+Vercel does not scope them for you.
+
+**Create your real admin on the live database** (no test-account seeding in
+production — ever):
+
+```bash
+ DATABASE_URL="<production connection string>" ADMIN_EMAIL="you@real.com" ADMIN_PASSWORD='pick-a-long-one' npm run admin:create -- --yes
+```
+
+(leading space keeps it out of shell history in most setups; `--yes` is
+required for non-localhost targets and it prints the host+name first so you
+can see what you're about to write to). Existing account, different role?
+It refuses unless you add `--force-role`. `prisma/seed.ts` keeps its
+production guard untouched — this script is the sanctioned path.
+
+**Test accounts on a public deployment are a real exposure**: the README
+lists `*@agora.test` / `password123`, so any public database containing them
+is an open door, admin included. The layout that stays safe:
+
+- **Production** DB: real data, **no** test accounts. If you're unsure:
+  `DATABASE_URL=… npm run accounts:lock-test -- --yes` — replaces every
+  `@agora.test` password with a random 32-byte hash that is immediately
+  discarded; rows stay, login on them dies.
+- **Preview + Development** share a **separate** database (create a Neon
+  branch: Neon dashboard → your project → Branching → New branch; then Vercel
+  → Settings → Environment Variables → add `DATABASE_URL` with **Environment:
+  Preview** only, value = the branch's pooled connection string). Seed that
+  branch (`npm run prisma:seed` with its URL) and test freely — resets and
+  seeded users can't touch production data.
+
+Login failure copy is honest about this class of problem: wrong credentials
+say "Invalid email or password" (same for existing and non-existing emails —
+no oracle), while a database-layer failure says "We're having trouble signing
+you in right now. Please try again in a minute." — so a crashed/misconnected
+DB is no longer invisible behind a fake wrong-password.
+
+
 ## Phase 2 — usage, overage, custom domains, payout ledger
 
 **Usage & overage.** One `UsageRecord` per business per billing period

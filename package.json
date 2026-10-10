@@ -14,7 +14,11 @@
     "prisma:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
-    "test:phase2": "tsx scripts/phase2-units.ts"
+    "test:phase2": "tsx scripts/phase2-units.ts",
+    "diagnose:auth": "tsx scripts/diagnose-auth.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "accounts:lock-test": "tsx scripts/lock-test-accounts.ts",
+    "test:ops": "tsx scripts/ops-units.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

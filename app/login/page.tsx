@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
+import { loginErrorMessage, normalizeEmail } from "@/lib/auth-errors";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -26,7 +27,9 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
     const res = await signIn("credentials", {
-      email: formData.get("email"),
+      // normalize before the exact-match lookup — typed padding/case is a
+      // UX failure, not a security property (see lib/auth-errors)
+      email: normalizeEmail(formData.get("email")),
       password: formData.get("password"),
       redirect: false,
       redirectTo: "/api/auth/after-login",
@@ -35,7 +38,10 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error) {
-      setError("Invalid email or password");
+      // Distinct copy for data-layer failure; everything credential-shaped
+      // stays the one generic message. Mapping lives in a unit-tested pure
+      // function, not inline here.
+      setError(loginErrorMessage(res.error));
     } else {
       // Redirect to role-appropriate page on next navigation
       router.push("/api/auth/after-login");
