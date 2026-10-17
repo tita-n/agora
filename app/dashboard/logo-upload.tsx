@@ -64,6 +64,29 @@ export default function LogoUpload({ currentLogoUrl }: { currentLogoUrl?: string
     router.refresh();
   }
 
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function removeLogo() {
+    if (!window.confirm("Remove the logo from your site? The file is deleted from storage.")) return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      const res = await fetch("/api/business/logo", { method: "DELETE" });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setRemoveError(j.error ?? "Could not remove the logo.");
+      } else {
+        setPreview(null);
+        router.refresh();
+      }
+    } catch {
+      setRemoveError("Network error — try again.");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   const shown = preview ?? currentLogoUrl ?? null;
 
   return (
@@ -90,6 +113,19 @@ export default function LogoUpload({ currentLogoUrl }: { currentLogoUrl?: string
           className="mt-3 max-h-24 rounded object-contain"
           unoptimized={shown.startsWith("blob:")} // local object-URL preview
         />
+      )}
+      {currentLogoUrl && !preview && (
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={removeLogo}
+            disabled={removing}
+            className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            {removing ? "Removing…" : "Remove logo"}
+          </button>
+          {removeError && <span className="text-xs text-red-600">{removeError}</span>}
+        </div>
       )}
       {status === "done" && (
         <p className="mt-2 text-xs text-green-600">

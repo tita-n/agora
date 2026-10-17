@@ -1,4 +1,63 @@
 
+## Phase 2.5 — content model, themes, uploads
+
+**What exists now:** Product / Service / GalleryImage / Testimonial models
+(scoped to Business, `onDelete: Cascade`, indexed by `businessId` +
+`sortOrder`); `Business.whatsappNumber|instagramUrl|facebookUrl|tiktokUrl|
+mapsUrl|openingHours|siteConfig`; `Theme.templateKey` (default `"minimal"`).
+Hard caps (300 products, 5 images/product, 60 services, 40 gallery,
+40 testimonials) live in `lib/content-limits.ts` and are mirrored by DB CHECK
+constraints — change both sides together.
+
+**Migrate after checkout:**
+
+```bash
+DATABASE_URL="..." npx prisma migrate deploy   # applies 20261017130000_phase25_content
+npm run prisma:seed                             # dev only: adds Boutique/Bistro/Studio theme rows
+```
+
+**Themes** (`themes/registry.ts`): a theme is pure presentational server
+components receiving ONE prop — the sanitized `SiteData`
+(`lib/site-data.ts`), built by `lib/resolve-site.ts`. Themes never touch the
+DB, cookies, env or client JS; unknown `templateKey` renders Minimal (the
+fallback is total). Owner-side controls: `siteConfig` sections (order +
+visibility) + brand colour (WCAG-checked text colour via `readableTextColor`)
++ 3 self-hosted font pairs (`app/fonts`, next/font/local). The **Minimal**
+theme component is untouched; existing sites render identically.
+
+**Product images / gallery uploads** reuse the signed blob-token flow with
+two new lanes: `products/<userId>/…` and `gallery/<userId>/…` (same 2 MB,
+same content types, same expiry, same owner-prefix enforcement). The
+usage-snapshot cron counts all three lanes per owner (`lib/vercel/blob-meter.ts`),
+so catalog photos bill correctly. DB-first-then-delete: replacing or removing
+images updates the row FIRST and deletes old blobs after (failures are logged,
+never user-visible).
+
+**WhatsApp ordering links**: `wa.me/<digits>?text=…` built SERVER-side from
+the normalized stored number (`lib/contacts.ts` — 0803… → 234803…). No cart,
+no checkout, no payment collection for tenant customers in this phase — by
+design.
+
+**Previews:** `/preview/boutique`, `/preview/bistro`, `/preview/studio`,
+`/preview/minimal` — fixture data only, `?state=empty` shows the
+nothing-but-a-name render. Reuse these on the marketing page.
+
+**Out of scope by decision:** switching themes after signup (price, payment
+and dev payout all hang off the theme row — that's its own future piece of
+work; the dashboard says so), custom HTML/CSS/script injection, booking
+calendars, blogs, i18n, sitemaps.
+
+**Owner flow:** onboarding step 3 picks a theme (live example links + a
+real render of your draft at step 4) → dashboard “Site content” cards
+(products/services/gallery/testimonials/design). Every mutation: same-origin,
+session, ownership; `businessId` derived server-side; item queries are
+`where { id, businessId }` so another tenant's id can never match.
+
+**Tests:** `npm run test:phase25` (whatsapp/URL/contrast/schema/caps +
+every theme renders full & empty fixtures without throwing),
+`npm run test:ops`, `npm run test:phase2`.
+
+
 ## Login diagnostics, admin bootstrap, and the test-account exposure
 
 **If login fails on a deployment, diagnose before changing anything:**
@@ -44,6 +103,14 @@ required for non-localhost targets and it prints the host+name first so you
 can see what you're about to write to). Existing account, different role?
 It refuses unless you add `--force-role`. `prisma/seed.ts` keeps its
 production guard untouched — this script is the sanctioned path.
+
+During the **test phase** `ADMIN_EMAIL=admin@agora.test` is fine — the script
+just warns you about two collisions to remember: `accounts:lock-test` matches
+*every* `@agora.test` account, so keep your admin alive with
+`npm run accounts:lock-test -- --yes --exclude admin@agora.test`, and any
+future `npm run prisma:seed` against that database will reset the account's
+password back to the publicly documented test one. Swap to a real email
+before launch.
 
 **Test accounts on a public deployment are a real exposure**: the README
 lists `*@agora.test` / `password123`, so any public database containing them

@@ -5,6 +5,9 @@
  */
 import { SUBDOMAIN_RE, RESERVED_SUBDOMAINS } from "./tenant";
 import { z } from "zod";
+import { THEME_KEYS, DEFAULT_THEME_KEY, type ThemeKey } from "./theme-keys";
+import { normalizeWhatsapp, normalizeSocialUrl, type SocialPlatform } from "./contacts";
+import { openingHoursInput } from "./opening-hours";
 
 /**
  * Pure structural subdomain check (no DB): DNS-label regex + reserved list,
@@ -77,10 +80,58 @@ export const draftSchema = z
       .or(z.literal(""))
       .transform((v) => (v === "" ? undefined : v))
       .optional(),
+    // ── Phase 2.5: theme pick + business contact basics ─────────────────
+    // A closed set of presentation KEYS (lib/theme-keys.ts) — never theme or
+    // price ids; payment-init resolves the row + price server-side.
+    themeKey: z.enum(THEME_KEYS).default(DEFAULT_THEME_KEY),
+    whatsappNumber: z
+      .string()
+      .trim()
+      .max(24)
+      .optional()
+      .refine((v) => !v || normalizeWhatsapp(v).ok, {
+        message: "Enter a valid phone, e.g. 0803 123 4567 or +234 803 123 4567",
+      })
+      .transform((v) => (v ? normalizeWhatsapp(v).digits : undefined)),
+    instagramUrl: socialField("instagram"),
+    facebookUrl: socialField("facebook"),
+    tiktokUrl: socialField("tiktok"),
+    mapsUrl: z
+      .string()
+      .trim()
+      .max(400)
+      .optional()
+      .refine((v) => !v || /^https:\/\/\S+$/.test(v), { message: "Map link must start with https://" })
+      .transform((v) => (v ? v : undefined)),
+    // Validated by the SAME day rules the render path parses (input schema
+    // preprocesses the form's closed-checkbox into storage shape first).
+    openingHours: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      openingHoursInput.optional()
+    ),
   })
-  .strict(); // reject unknown keys (client cannot smuggle themeId, price, status, …)
+  .strict();
+
+function socialField(platform: SocialPlatform) {
+  return z
+    .string()
+    .trim()
+    .max(300)
+    .optional()
+    .refine((v) => !v || normalizeSocialUrl(platform, v).ok, {
+      message: `Must be a ${platform}.com https link`,
+    })
+    .transform((v) => {
+      if (!v) return undefined;
+      const r = normalizeSocialUrl(platform, v);
+      return r.ok && r.url ? r.url : undefined;
+    });
+} // reject unknown keys (client cannot smuggle themeId, price, status, …)
 
 export type OnboardingDraft = z.infer<typeof draftSchema>;
+
+/** Re-exported so fulfillment/UI can name the type without importing the theme registry. */
+export type { ThemeKey };
 
 /**
  * Draft + server-derived fields persisted in OnboardingSession.payload.

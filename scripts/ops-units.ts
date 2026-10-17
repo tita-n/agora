@@ -11,7 +11,7 @@ import {
   INVALID_CREDENTIALS_MESSAGE,
   INFRA_FAILURE_MESSAGE,
 } from "../lib/auth-errors";
-import { parseDbTarget, describeDbTarget } from "../lib/ops-db";
+import { parseDbTarget, describeDbTarget, parseExclusions, isTestDomainEmail } from "../lib/ops-db";
 
 let pass = 0;
 let fail = 0;
@@ -88,5 +88,18 @@ try {
 }
 eq(threw, true, "missing DATABASE_URL rejected loudly");
 
+
+// ── parseExclusions / isTestDomainEmail ───────────────────────────────────
+eq(parseExclusions(["node", "x"]), [], "no flags → empty");
+eq(
+  parseExclusions(["--exclude", " Admin@Agora.test ", "--exclude=owner@agora.test", "--exclude", "owner@agora.test"]),
+  ["admin@agora.test", "owner@agora.test"],
+  "both forms, normalized, deduped"
+);
+eq(parseExclusions(["--exclude"]), [], "dangling --exclude → nothing");
+eq(parseExclusions(["--exclude="]), [], "--exclude= with empty value → nothing");
+eq(isTestDomainEmail("ADMIN@agora.test "), true, "test-domain predicate trims+lowercases");
+eq(isTestDomainEmail("you@real.com"), false, "real email is not test-domain");
+eq(isTestDomainEmail("agora.test@example.com"), false, "domain must SUFFIX the address");
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

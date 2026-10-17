@@ -3,16 +3,41 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { uploadLogo } from "@/lib/blob-client";
-import { MinimalSite } from "@/components/themes/minimal-site";
+import { THEMES, THEME_CATALOG } from "@/themes/registry";
+import { defaultSiteConfig } from "@/lib/site-config";
+import type { SiteData } from "@/lib/site-data";
+import { WEEKDAYS, type Weekday } from "@/lib/opening-hours";
 import { formatNaira } from "@/lib/money";
 import type { PaymentInstructions } from "@/lib/payments/types";
 
 /**
- * 4-step onboarding wizard. Holds the DRAFT in client state only — nothing
- * is persisted server-side until the final "Pay & publish" click creates
- * the OnboardingSession and the Paystack transaction. No Business row
+ * 5-step onboarding wizard (Phase 2.5). Holds the DRAFT in client state
+ * only — nothing is persisted server-side until the final "Pay & publish"
+ * click creates the OnboardingSession and the payment. No Business row
  * exists until a verified payment fulfills that session.
+ *
+ * The preview step renders the SELECTED theme's real component from draft
+ * state — the same pure functions the server runs against DB state (theme
+ * contract, themes/types.ts), so what you preview is literally what ships.
+ * Links inside the preview are inert on purpose (a draft has no URL yet).
  */
+
+export interface WizardTheme {
+  name: string;
+  priceKobo: number;
+  templateKey: string;
+}
+
+interface DayForm {
+  closed: boolean;
+  open: string;
+  close: string;
+}
+type HoursForm = Record<Weekday, DayForm>;
+
+const EMPTY_HOURS: HoursForm = Object.fromEntries(
+  WEEKDAYS.map((d) => [d, { closed: d === "sunday", open: "", close: "" }])
+) as HoursForm;
 
 interface Draft {
   subdomain: string;
@@ -23,6 +48,13 @@ interface Draft {
   address: string;
   primaryColor: string;
   logoUrl: string;
+  themeKey: string;
+  whatsappNumber: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  tiktokUrl: string;
+  mapsUrl: string;
+  hours: HoursForm;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -34,7 +66,62 @@ const EMPTY_DRAFT: Draft = {
   address: "",
   primaryColor: "#111827",
   logoUrl: "",
+  themeKey: "minimal",
+  whatsappNumber: "",
+  instagramUrl: "",
+  facebookUrl: "",
+  tiktokUrl: "",
+  mapsUrl: "",
+  hours: EMPTY_HOURS,
 };
+
+/** Hours form → draftSchema input (all-closed collapses to undefined). */
+function hoursPayload(hours: HoursForm) {
+  const out: Record<string, { closed: boolean; open?: string; close?: string }> = {};
+  let anyOpen = false;
+  for (const d of WEEKDAYS) {
+    const day = hours[d];
+    if (day.closed || !day.open || !day.close) out[d] = { closed: true };
+    else {
+      out[d] = { closed: false, open: day.open, close: day.close };
+      anyOpen = true;
+    }
+  }
+  return anyOpen ? out : undefined;
+}
+
+/** Minimal-safe primary color for previews (mirrors MinimalSite's fallback). */
+const safeHex = (v: string) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : "#111827");
+
+function draftToSiteData(draft: Draft): SiteData {
+  return {
+    themeKey: draft.themeKey,
+    business: {
+      name: draft.name || "Your Business",
+      description: draft.description || null,
+      logoUrl: draft.logoUrl || null,
+      contactEmail: draft.contactEmail || null,
+      contactPhone: draft.contactPhone || null,
+      address: draft.address || null,
+      whatsappDigits: /^[1-9]\d{7,14}$/.test(draft.whatsappNumber.replace(/\D/g, ""))
+        ? draft.whatsappNumber.replace(/\D/g, "")
+        : null,
+      instagramUrl: draft.instagramUrl || null,
+      facebookUrl: draft.facebookUrl || null,
+      tiktokUrl: draft.tiktokUrl || null,
+      mapsUrl: draft.mapsUrl || null,
+      openingHours: null, // rendered live below instead — preview shows the SHAPE
+    },
+    config: defaultSiteConfig(safeHex(draft.primaryColor)),
+    products: [],
+    categories: [],
+    activeCategory: null,
+    services: [],
+    gallery: [],
+    testimonials: [],
+    pagination: null,
+  };
+}
 
 type SubdomainCheck =
   | { state: "idle" | "checking" }
@@ -44,14 +131,12 @@ type SubdomainCheck =
 export function OnboardWizard({
   userId,
   rootDomain,
-  themeName,
-  themePriceKobo,
+  themes,
   hostingFeeKobo,
 }: {
   userId: string;
   rootDomain: string;
-  themeName: string;
-  themePriceKobo: number;
+  themes: WizardTheme[];
   hostingFeeKobo: number;
 }) {
   const [step, setStep] = useState(1);
@@ -67,6 +152,11 @@ export function OnboardWizard({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
+  const setDay = (day: Weekday, patch: Partial<DayForm>) =>
+    setDraft((d) => ({ ...d, hours: { ...d.hours, [day]: { ...d.hours[day], ...patch } } }));
+
+  const selectedTheme =
+    themes.find((t) => t.templateKey === draft.themeKey) ?? themes[0] ?? { name: "Minimal", priceKobo: 0, templateKey: "minimal" };
 
   // Step 1: debounced live availability (server runs lib/tenant rules + DB).
   useEffect(() => {
@@ -114,10 +204,27 @@ export function OnboardWizard({
     setPaying(true);
     setPayError(null);
     try {
+      const payload = {
+        subdomain: draft.subdomain,
+        name: draft.name,
+        description: draft.description,
+        contactEmail: draft.contactEmail,
+        contactPhone: draft.contactPhone,
+        address: draft.address,
+        primaryColor: draft.primaryColor,
+        logoUrl: draft.logoUrl,
+        themeKey: draft.themeKey,
+        whatsappNumber: draft.whatsappNumber || undefined,
+        instagramUrl: draft.instagramUrl || undefined,
+        facebookUrl: draft.facebookUrl || undefined,
+        tiktokUrl: draft.tiktokUrl || undefined,
+        mapsUrl: draft.mapsUrl || undefined,
+        openingHours: hoursPayload(draft.hours),
+      };
       const res = await fetch("/api/onboarding/payment-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json()) as {
         instructions?: PaymentInstructions;
@@ -141,15 +248,16 @@ export function OnboardWizard({
     }
   }
 
-  const totalKobo = themePriceKobo + hostingFeeKobo;
+  const totalKobo = selectedTheme.priceKobo + hostingFeeKobo;
   const canLeaveStep1 = check.state === "ok";
+  const PreviewTheme = THEMES[draft.themeKey] ?? THEMES.minimal;
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto max-w-xl">
         {/* Step indicator */}
-        <ol className="mb-8 flex items-center justify-center gap-2 text-xs font-medium">
-          {["Subdomain", "Profile", "Preview", "Payment"].map((label, i) => {
+        <ol className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-medium">
+          {["Subdomain", "Profile", "Theme", "Preview", "Payment"].map((label, i) => {
             const n = i + 1;
             return (
               <li key={label} className="flex items-center gap-2">
@@ -214,7 +322,8 @@ export function OnboardWizard({
               <h1 className="text-xl font-bold text-gray-900">Your business profile</h1>
               <p className="mt-1 text-sm text-gray-500">
                 Everything here is optional except the name — a name-only
-                site should still look great.
+                site should still look great. WhatsApp + hours light up the
+                order/book buttons on real themes.
               </p>
               <div className="mt-4 space-y-4">
                 <Field label="Business name *">
@@ -260,11 +369,102 @@ export function OnboardWizard({
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
+                  <Field label="WhatsApp number (orders & bookings)">
+                    <input
+                      value={draft.whatsappNumber}
+                      onChange={(e) => set("whatsappNumber", e.target.value)}
+                      placeholder="0803 123 4567"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      maxLength={24}
+                    />
+                  </Field>
+                  <Field label="Google Maps link">
+                    <input
+                      value={draft.mapsUrl}
+                      onChange={(e) => set("mapsUrl", e.target.value)}
+                      placeholder="https://maps.google.com/…"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      maxLength={400}
+                    />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Instagram">
+                    <input
+                      value={draft.instagramUrl}
+                      onChange={(e) => set("instagramUrl", e.target.value)}
+                      placeholder="instagram.com/you"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      maxLength={300}
+                    />
+                  </Field>
+                  <Field label="Facebook">
+                    <input
+                      value={draft.facebookUrl}
+                      onChange={(e) => set("facebookUrl", e.target.value)}
+                      placeholder="facebook.com/you"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      maxLength={300}
+                    />
+                  </Field>
+                  <Field label="TikTok">
+                    <input
+                      value={draft.tiktokUrl}
+                      onChange={(e) => set("tiktokUrl", e.target.value)}
+                      placeholder="tiktok.com/@you"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      maxLength={300}
+                    />
+                  </Field>
+                </div>
+
+                <fieldset className="rounded-lg border border-gray-200 p-3">
+                  <legend className="px-1 text-xs font-medium text-gray-600">Opening hours (optional)</legend>
+                  <div className="space-y-1.5">
+                    {WEEKDAYS.map((day) => (
+                      <div key={day} className="flex flex-wrap items-center gap-2 text-xs capitalize">
+                        <span className="w-16 font-medium">{day}</span>
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={draft.hours[day].closed}
+                            onChange={(e) => setDay(day, { closed: e.target.checked })}
+                          />
+                          Closed
+                        </label>
+                        {!draft.hours[day].closed && (
+                          <>
+                            <input
+                              type="time"
+                              value={draft.hours[day].open}
+                              onChange={(e) => setDay(day, { open: e.target.value })}
+                              className="rounded border border-gray-300 px-2 py-1"
+                              aria-label={`${day} opening time`}
+                            />
+                            <span className="text-gray-400">→</span>
+                            <input
+                              type="time"
+                              value={draft.hours[day].close}
+                              onChange={(e) => setDay(day, { close: e.target.value })}
+                              className="rounded border border-gray-300 px-2 py-1"
+                              aria-label={`${day} closing time`}
+                            />
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] text-gray-400">
+                    Shown on Bistro & Studio; all-Closed is treated as “no hours listed”.
+                  </p>
+                </fieldset>
+
+                <div className="grid grid-cols-2 gap-3">
                   <Field label="Brand color">
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
-                        value={/^#[0-9a-fA-F]{6}$/.test(draft.primaryColor) ? draft.primaryColor : "#111827"}
+                        value={safeHex(draft.primaryColor)}
                         onChange={(e) => set("primaryColor", e.target.value)}
                         className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
                         aria-label="Pick a brand color"
@@ -303,36 +503,90 @@ export function OnboardWizard({
 
           {step === 3 && (
             <section>
+              <h1 className="text-xl font-bold text-gray-900">Choose a theme</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                The theme decides how your content looks. Open a full example
+                of any theme first — they all show YOUR color and name in the
+                live preview on the next step.
+              </p>
+              <div role="radiogroup" aria-label="Theme" className="mt-4 space-y-3">
+                {themes.map((theme) => {
+                  const meta = THEME_CATALOG.find((c) => c.key === theme.templateKey);
+                  const active = draft.themeKey === theme.templateKey;
+                  return (
+                    <button
+                      type="button"
+                      key={theme.templateKey}
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => set("themeKey", theme.templateKey)}
+                      className={`block w-full rounded-lg border p-4 text-left transition ${
+                        active ? "border-gray-900 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-semibold text-gray-900">{theme.name}</span>
+                        <span className="text-sm text-gray-600">{formatNaira(theme.priceKobo)}/mo</span>
+                      </div>
+                      {meta && <p className="mt-1 text-xs text-gray-500">{meta.forWho}</p>}
+                      <p className="mt-2 text-xs">
+                        <a
+                          href={`/preview/${theme.templateKey}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium text-sky-700 underline"
+                        >
+                          See a full example site ↗
+                        </a>
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              {draft.themeKey === "minimal" && (
+                <p className="mt-3 text-xs text-gray-400">
+                  Minimal is a one-page card — catalog themes come with
+                  product & menu editors after you go live.
+                </p>
+              )}
+              <div className="mt-6 flex justify-between">
+                <BackButton onClick={() => setStep(2)} />
+                <NextButton onClick={() => setStep(4)} label="See it with my details" />
+              </div>
+            </section>
+          )}
+
+          {step === 4 && (
+            <section>
               <h1 className="text-xl font-bold text-gray-900">Live preview</h1>
               <p className="mt-1 text-sm text-gray-500">
                 This is exactly what visitors at{" "}
                 <span className="font-mono">
                   {draft.subdomain || "yours"}.{rootDomain}
                 </span>{" "}
-                will see — your real theme, your real data.
+                will see — your real theme, your real data. (Links are idle
+                in preview; your site has no address until payment.)
               </p>
-              <div className="mt-4 overflow-hidden rounded-lg border border-gray-200">
-                <MinimalSite
-                  data={{
-                    name: draft.name || "Your Business",
-                    description: draft.description || null,
-                    logoUrl: draft.logoUrl || null,
-                    primaryColor: draft.primaryColor || null,
-                    contactEmail: draft.contactEmail || null,
-                    contactPhone: draft.contactPhone || null,
-                    address: draft.address || null,
-                  }}
-                  agoraHref="/"
-                />
+              <div
+                className="mt-4 max-h-[70vh] overflow-y-auto rounded-lg border border-gray-200"
+                onClickCapture={(e) => {
+                  // Inert preview: any click on a link inside the render is
+                  // swallowed (draft content has no home to navigate to yet).
+                  const target = (e.target as HTMLElement).closest("a");
+                  if (target) e.preventDefault();
+                }}
+              >
+                <PreviewTheme.Site data={draftToSiteData(draft)} agoraHref="/" />
               </div>
               <div className="mt-6 flex justify-between">
-                <BackButton onClick={() => setStep(2)} />
-                <NextButton onClick={() => setStep(4)} label="Continue to payment" />
+                <BackButton onClick={() => setStep(3)} />
+                <NextButton onClick={() => setStep(5)} label="Continue to payment" />
               </div>
             </section>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <section>
               {acknowledged ? (
                 <>
@@ -386,7 +640,7 @@ export function OnboardWizard({
                     Your site is created the moment payment is confirmed.
                   </p>
                   <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
-                    <Row label={`"${themeName}" theme — monthly`} value={formatNaira(themePriceKobo)} />
+                    <Row label={`"${selectedTheme.name}" theme — monthly`} value={formatNaira(selectedTheme.priceKobo)} />
                     <Row label="Hosting — monthly" value={formatNaira(hostingFeeKobo)} />
                     <div className="flex items-center justify-between px-4 py-3 font-semibold">
                       <dt>Total</dt>
@@ -401,7 +655,7 @@ export function OnboardWizard({
                     <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
                   )}
                   <div className="mt-6 flex items-center justify-between">
-                    <BackButton onClick={() => setStep(3)} />
+                    <BackButton onClick={() => setStep(4)} />
                     <button
                       onClick={pay}
                       disabled={paying}

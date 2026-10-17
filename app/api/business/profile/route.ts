@@ -13,7 +13,12 @@ export const dynamic = "force-dynamic";
  * completion callback). Business is resolved from the SESSION's user id;
  * the client never sends a business id, so there is no IDOR surface.
  */
-const profileSchema = draftSchema.omit({ subdomain: true, logoUrl: true });
+// Phase 2.5 note: draftSchema also carries `themeKey` — a profile PATCH
+// must never move a business to another theme (theme switching is out of
+// scope: price, payment and dev payout all hang off it). Omitting it here
+// PLUS the inherited .strict() means sending themeKey/themeId is a hard
+// 422 ("Unrecognized key") — physically impossible, not politely declined.
+const profileSchema = draftSchema.omit({ subdomain: true, logoUrl: true, themeKey: true });
 
 export async function PATCH(req: NextRequest) {
   if (req.headers.get("origin") !== req.nextUrl.origin) {
@@ -58,6 +63,14 @@ export async function PATCH(req: NextRequest) {
       contactPhone: d.contactPhone ?? null,
       address: d.address ?? null,
       primaryColor: d.primaryColor ?? null,
+      // Phase 2.5 fields (normalized by the shared schema's transforms).
+      // `?? null` on purpose: clearing a field must clear the column too.
+      whatsappNumber: d.whatsappNumber ?? null,
+      instagramUrl: d.instagramUrl ?? null,
+      facebookUrl: d.facebookUrl ?? null,
+      tiktokUrl: d.tiktokUrl ?? null,
+      mapsUrl: d.mapsUrl ?? null,
+      openingHours: d.openingHours ?? null,
     },
   });
   return NextResponse.json({ ok: true });

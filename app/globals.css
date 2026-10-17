@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Phase 2.5 tenant sites: visible focus states are required on every theme
+   (keyboard + screen-reader users on tenant sites get the same bar as ours).
+   Themes set --ap-focus from their primary colour via the shared ThemeRoot. */
+.site :focus-visible {
+  outline: 3px solid var(--ap-focus, #2563eb);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.site img { min-height: 1px; }
+/* CSS-only mobile nav (details/summary) — no client JS ships for it. */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }

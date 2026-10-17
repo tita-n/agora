@@ -20,7 +20,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { parseDbTarget, describeDbTarget, requireYesFor } from "../lib/ops-db";
+import { parseDbTarget, describeDbTarget, requireYesFor, isTestDomainEmail } from "../lib/ops-db";
 
 const target = parseDbTarget(process.env.DATABASE_URL);
 
@@ -46,6 +46,18 @@ try {
 }
 
 requireYesFor(target, process.argv, "admin:create");
+
+if (isTestDomainEmail(parsedEmail)) {
+  // Deliberately a warning, not a block: during the test phase this email
+  // is the natural admin identity. But it collides with two safeguards:
+  console.error(
+    `WARNING: ${parsedEmail} is on the seeded test domain.\n` +
+      ` - npm run accounts:lock-test matches every @agora.test account and would LOCK this admin\n` +
+      `   too — pass --exclude ${parsedEmail} when you run it (after real users exist).\n` +
+      ` - Any future 'npm run prisma:seed' against THIS database upserts this email and resets\n` +
+      `   its password to the publicly documented test one. Swap to a real email before launch.`
+  );
+}
 
 const prisma = new PrismaClient();
 try {

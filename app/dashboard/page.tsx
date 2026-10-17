@@ -6,6 +6,7 @@ import { formatNaira } from "@/lib/money";
 import LogoUpload from "./logo-upload";
 import { UserNav } from "@/components/user-nav";
 import { ProfileForm } from "./profile-form";
+import { parseOpeningHours, WEEKDAYS } from "@/lib/opening-hours";
 import { DomainPanel } from "@/components/domain-panel";
 import { UsageSummary, type UsageRecordView } from "@/components/usage-summary";
 import { SUBSCRIPTION_PERIOD_MS } from "@/lib/onboarding";
@@ -32,6 +33,12 @@ export default async function DashboardPage() {
       contactPhone: true,
       address: true,
       primaryColor: true,
+      whatsappNumber: true,
+      instagramUrl: true,
+      facebookUrl: true,
+      tiktokUrl: true,
+      mapsUrl: true,
+      openingHours: true,
       logoUrl: true,
       subscriptionStatus: true,
       nextBillingDate: true,
@@ -112,6 +119,14 @@ export default async function DashboardPage() {
     })) as UsageRecordView | null;
   }
 
+  // Phase 2.5 content counts for the site-content nav (cheap, indexed).
+  const [nProducts, nServices, nGallery, nTestimonials] = await Promise.all([
+    prisma.product.count({ where: { businessId: business.id } }),
+    prisma.service.count({ where: { businessId: business.id } }),
+    prisma.galleryImage.count({ where: { businessId: business.id } }),
+    prisma.testimonial.count({ where: { businessId: business.id } }),
+  ]);
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -165,6 +180,20 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        {/* Site content nav (Phase 2.5) */}
+        <section className="rounded-lg border border-gray-200 bg-white p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Site content
+          </h2>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <ContentCard href="/dashboard/products" label="Products" count={nProducts} />
+            <ContentCard href="/dashboard/services" label="Services" count={nServices} />
+            <ContentCard href="/dashboard/gallery" label="Gallery" count={nGallery} />
+            <ContentCard href="/dashboard/testimonials" label="Testimonials" count={nTestimonials} />
+            <ContentCard href="/dashboard/design" label="Design" count={null} />
+          </div>
+        </section>
+
         {pendingPayment && (
           <section className="rounded-lg border border-sky-200 bg-sky-50 p-4">
             <p className="text-sm text-sky-900">
@@ -212,6 +241,12 @@ export default async function DashboardPage() {
             contactPhone: business.contactPhone ?? "",
             address: business.address ?? "",
             primaryColor: business.primaryColor ?? "",
+            whatsappNumber: business.whatsappNumber ?? "",
+            instagramUrl: business.instagramUrl ?? "",
+            facebookUrl: business.facebookUrl ?? "",
+            tiktokUrl: business.tiktokUrl ?? "",
+            mapsUrl: business.mapsUrl ?? "",
+            hours: hoursFormValue(business.openingHours),
           }}
         />
 
@@ -229,4 +264,27 @@ export default async function DashboardPage() {
       </div>
     </main>
   );
+}
+
+function ContentCard({ href, label, count }: { href: string; label: string; count: number | null }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-800 hover:border-gray-400 hover:bg-gray-50"
+    >
+      {label}
+      {count !== null && <span className="ml-1.5 text-xs text-gray-400">{count}</span>}
+    </Link>
+  );
+}
+
+/** stored hours (any shape) → the form's per-day rows; missing days open-but-empty */
+function hoursFormValue(raw: unknown): Record<string, { closed: boolean; open: string; close: string }> {
+  const parsed = parseOpeningHours(raw);
+  const out: Record<string, { closed: boolean; open: string; close: string }> = {};
+  for (const day of WEEKDAYS) {
+    const d = parsed?.[day];
+    out[day] = !d || d.closed ? { closed: true, open: "", close: "" } : { closed: false, open: d.open, close: d.close };
+  }
+  return out;
 }

@@ -46,7 +46,13 @@ export async function POST(req: NextRequest) {
         }
         if (!userId || !businessId) return;
         // Defense in depth: the blob must live under the uploading user's prefix.
-        if (!blob.pathname.startsWith(`logos/${userId}/`)) return;
+        const m = /^(logos|products|gallery)\/[a-z0-9]{10,32}\/[\w.-]+\.(png|jpe?g|webp)$/i.exec(blob.pathname);
+        if (!m || !blob.pathname.startsWith(`${m[1]}/${userId}/`)) return;
+        // Only LOGO uploads self-persist (they ARE the profile field).
+        // Product/gallery blobs are persisted by their CRUD routes — the
+        // URL rides back through upload() to the client and into a validated
+        // write; persisting here instead would race that write.
+        if (m[1] !== "logos") return;
 
         // Read the superseded URL FIRST (before overwriting it).
         const previous = await prisma.business.findUnique({

@@ -40,11 +40,26 @@ model Business {
   domainStatus    String    @default("none")
   domainError     String?
   domainCheckedAt DateTime?
+  // ── Phase 2.5 content model: contact/social/hours live on Business,
+  // commerce rows are their own models below. All strings render as React
+  // text; all URL-shaped columns are validated on write AND re-checked on
+  // read (lib/resolve-site.ts), and whatsappNumber stores normalized digits.
+  whatsappNumber String?  // digits with country code, no punctuation ("23480...")
+  instagramUrl   String?  // https, instagram.com allowlist (lib/contacts.ts)
+  facebookUrl    String?
+  tiktokUrl      String?
+  mapsUrl        String?
+  openingHours   Json?    // validated shape in lib/opening-hours.ts
+  siteConfig     Json?    // sections order/visibility + color + font (lib/site-config.ts); null = theme defaults
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
   theme      Theme?   @relation(fields: [themeId], references: [id])
   onboardingSessions OnboardingSession[]
+  products     Product[]
+  services     Service[]
+  galleryImages  GalleryImage[]
+  testimonials   Testimonial[]
 
   // No @@index([subdomain]) — @unique already provides the index (M-7).
   @@index([ownerId])
@@ -81,6 +96,11 @@ model OnboardingSession {
 model Theme {
   id         String     @id @default(cuid())
   name       String
+  // Phase 2.5: the presentation this theme row selects. Keys map to
+  // themes/registry.ts; unknown keys fall back to "minimal" at render time.
+  // Existing rows backfill to "minimal" via the column default (see
+  // migration 20261017130000_phase25_content).
+  templateKey String    @default("minimal")
   devId      String
   price      Int        // in kobo (smallest currency unit) to avoid float issues; must be > 0 — enforced by DB check (Theme_price_positive, see migration 20260912150000_phase1) and by chargeAmountKobo() before any payment calculation
   category   String
@@ -90,6 +110,7 @@ model Theme {
 
   @@index([devId])
   @@index([category])
+  @@index([templateKey])
 }
 
 model User {
@@ -213,4 +234,79 @@ model DevPayout {
   paidBy   User? @relation("PayoutConfirmer", fields: [paidById], references: [id], onDelete: SetNull)
 
   @@index([devId, status])
+}
+
+// ── Phase 2.5: tenant content ─────────────────────────────────────────────
+// All four models are pure content (no relations beyond their Business),
+// cascade with the business, and are ordered by explicit sortOrder ints
+// (reordering is bulk UPDATEs of these). Caps + field lengths are enforced
+// app-side (lib/content-schema.ts + lib/content-limits.ts) and mirrored by
+// DB CHECK constraints in the phase25 migration — change both together.
+// imageUrls stores ONLY blob URLs we minted (validated on write, re-checked
+// on read); at most 5 per product.
+
+model Product {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  priceKobo   Int? // null = "price on request"; >= 0 via DB check
+  category    String?
+  inStock     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  imageUrls   String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  priceKobo   Int?
+  priceLabel  String? // e.g. "from" — displayed verbatim before the price
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model GalleryImage {
+  id         String   @id @default(cuid())
+  businessId String
+  url        String
+  caption    String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  businessId String
+  authorName String
+  quote      String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
 }

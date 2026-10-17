@@ -86,6 +86,15 @@ export async function createBusinessFromDraft(input: {
       address: payload.address ?? null,
       primaryColor: payload.primaryColor ?? null,
       logoUrl: payload.logoUrl ?? null,
+      // Phase 2.5 — contact/hours collected during onboarding (already
+      // normalized by draftSchema transforms; siteConfig stays null so the
+      // theme renders its defaults until the owner designs the page).
+      whatsappNumber: payload.whatsappNumber ?? null,
+      instagramUrl: payload.instagramUrl ?? null,
+      facebookUrl: payload.facebookUrl ?? null,
+      tiktokUrl: payload.tiktokUrl ?? null,
+      mapsUrl: payload.mapsUrl ?? null,
+      openingHours: payload.openingHours ?? undefined,
       ownerId: input.userId,
       themeId: payload.themeId,
       subscriptionStatus: "active",

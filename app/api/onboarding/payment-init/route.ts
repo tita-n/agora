@@ -84,10 +84,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That subdomain is already taken." }, { status: 409 });
   }
 
-  // Phase 1 ships exactly one theme: "Minimal". themeId is resolved here,
-  // never accepted from the client.
+  // Phase 2.5: the client picks a theme from the CLOSED set of presentation
+  // keys (draftSchema's enum) — the Theme row and its price are still
+  // resolved server-side from that key, so no money or id is ever accepted
+  // from the browser (Phase 1's guarantee, extended not relaxed).
   const theme = await prisma.theme.findFirst({
-    where: { name: "Minimal" },
+    where: { templateKey: draft.themeKey },
+    orderBy: { createdAt: "asc" },
     select: { id: true, price: true },
   });
   if (!theme) {

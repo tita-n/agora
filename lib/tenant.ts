@@ -39,6 +39,9 @@ export const RESERVED_SUBDOMAINS = new Set([
   "docs",
   "unauthorized",
   "sites",
+  // Phase 2.5: theme preview pages are a main-app route — a tenant must
+  // never be able to own the label and serve someone else's fixtures
+  "preview",
   // internal rewrite target for Phase 2 custom-domain serving: no business
   // may own the subdomain the resolver route lives under
   "tenant-host",

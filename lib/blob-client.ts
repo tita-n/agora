@@ -17,7 +17,12 @@ const EXT_BY_TYPE: Record<string, string> = {
   "image/webp": "webp",
 };
 
-export async function uploadLogo(
+/** kind = which upload lane: logos | products | gallery (mirrors
+ * /api/blob/token's PATH_RE exactly; the server is the enforcement). */
+export type UploadKind = "logos" | "products" | "gallery";
+
+export async function uploadImage(
+  kind: UploadKind,
   userId: string,
   file: File
 ): Promise<{ url: string | null; error: string | null }> {
@@ -30,7 +35,7 @@ export async function uploadLogo(
       return { url: null, error: "File exceeds the 2 MB limit" };
     }
 
-    const pathname = `logos/${userId}/${Date.now()}.${ext}`;
+    const pathname = `${kind}/${userId}/${Date.now()}.${ext}`;
     const result = await upload(pathname, file, {
       access: "public",
       handleUploadUrl: "/api/blob/token",
@@ -44,4 +49,10 @@ export async function uploadLogo(
       error: err instanceof Error ? err.message : "Upload failed",
     };
   }
+}
+
+/** Back-compat wrapper: the profile logo lane (used by the dashboard and
+ * the onboarding wizard unchanged). */
+export function uploadLogo(userId: string, file: File) {
+  return uploadImage("logos", userId, file);
 }

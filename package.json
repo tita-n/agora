@@ -18,7 +18,8 @@
     "diagnose:auth": "tsx scripts/diagnose-auth.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "accounts:lock-test": "tsx scripts/lock-test-accounts.ts",
-    "test:ops": "tsx scripts/ops-units.ts"
+    "test:ops": "tsx scripts/ops-units.ts",
+    "test:phase25": "tsx scripts/phase25-units.tsx"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
