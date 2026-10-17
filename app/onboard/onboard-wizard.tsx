@@ -318,6 +318,7 @@ export function OnboardWizard({
               <div className="mt-4 flex items-center gap-2 rounded-md border border-rule-strong px-3 py-2 focus-within:border-ink">
                 <input
                   autoFocus
+                  aria-label="Subdomain"
                   value={draft.subdomain}
                   onChange={(e) =>
                     set("subdomain", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))

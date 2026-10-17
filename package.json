@@ -24,7 +24,8 @@
     "theme:validate": "tsx scripts/theme-validate.ts",
     "theme:publish": "tsx scripts/theme-publish.ts",
     "test:engine": "tsx scripts/engine-units.ts",
-    "verify": "npm run test:auth && npm run test:ops && npm run test:phase2 && npm run test:phase25 && npm run test:engine && npm run theme:validate"
+    "verify": "npm run test:auth && npm run test:ops && npm run test:phase2 && npm run test:phase25 && npm run test:engine && npm run theme:validate && npm run test:e2e",
+    "test:e2e": "node scripts/e2e-run.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

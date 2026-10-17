@@ -37,4 +37,6 @@ yarn-error.log*
 
 # coverage
 coverage/
-.nyc_output/
+.nyc_output/e2e-artifacts/
+test-results/
+playwright-report/
