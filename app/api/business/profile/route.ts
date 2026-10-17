@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 // scope: price, payment and dev payout all hang off it). Omitting it here
 // PLUS the inherited .strict() means sending themeKey/themeId is a hard
 // 422 ("Unrecognized key") — physically impossible, not politely declined.
-const profileSchema = draftSchema.omit({ subdomain: true, logoUrl: true, themeKey: true });
+const profileSchema = draftSchema.omit({ subdomain: true, logoUrl: true, themeSlug: true });
 
 export async function PATCH(req: NextRequest) {
   if (req.headers.get("origin") !== req.nextUrl.origin) {
@@ -27,9 +27,6 @@ export async function PATCH(req: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role !== "business_owner") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },

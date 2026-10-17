@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, userCapabilities } from "@/lib/auth";
+import { postLoginPath } from "@/lib/routing";
 
 /**
  * This page reads the request's session cookie (getCurrentUser →
@@ -15,18 +16,21 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = await getCurrentUser();
 
-  const destination =
-    user?.role === "admin"
-      ? "/admin"
-      : user?.role === "developer"
-        ? "/dev"
-        : "/dashboard";
-  const ctaLabel =
-    user?.role === "admin"
+  // Phase 0 capability model: one account can own sites AND develop AND
+  // staff the platform — the CTA follows the same priority as postLoginPath
+  // (lib/routing.ts, unit-tested): staff → admin, owner → dashboard,
+  // developer → developer console, otherwise → onboarding.
+  const caps = user ? await userCapabilities(user.id) : null;
+  const destination = user ? postLoginPath(caps ?? { isStaff: false, hasBusiness: false, isDeveloper: false }) : "/signup";
+  const ctaLabel = !user
+    ? "Create your site"
+    : caps?.isStaff
       ? "Admin dashboard"
-      : user?.role === "developer"
-        ? "Developer portal"
-        : "Go to dashboard";
+      : caps?.hasBusiness
+        ? "Go to dashboard"
+        : caps?.isDeveloper
+          ? "Developer console"
+          : "Start onboarding";
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center text-center px-4">

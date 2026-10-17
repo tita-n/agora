@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireStaff, prisma } from "@/lib/auth";
 import { formatNaira } from "@/lib/money";
 import { UserNav } from "@/components/user-nav";
 
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * selects everywhere; money formatted with the platform's Intl-free helper.
  */
 export default async function AdminHomePage() {
-  await requireRole(["admin"]);
+  await requireStaff();
 
   const [pendingCount, processingCount, owedRows, activeCount, pastDueCount, inactiveCount] =
     await Promise.all([

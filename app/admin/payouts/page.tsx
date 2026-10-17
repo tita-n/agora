@@ -1,4 +1,4 @@
-import { requireRole, prisma } from "@/lib/auth";
+import { requireStaff, prisma } from "@/lib/auth";
 import { formatNaira } from "@/lib/money";
 import { formatDate } from "@/lib/subscription";
 import { payoutPeriodLabel } from "@/lib/billing/payouts";
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * by design, matching the reject-then-new-row philosophy of payments).
  */
 export default async function AdminPayoutsPage() {
-  await requireRole(["admin"]);
+  await requireStaff();
 
   interface PayoutRow {
     id: string;

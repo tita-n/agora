@@ -27,8 +27,6 @@ export const dynamic = "force-dynamic";
 async function ownerBusiness() {
   const user = await getCurrentUser();
   if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (user.role !== "business_owner")
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

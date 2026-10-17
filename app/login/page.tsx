@@ -103,6 +103,10 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+        <p className="mt-6 flex items-center justify-between text-sm text-gray-500">
+          <a href="/signup" className="font-medium text-gray-900 underline">Create an account</a>
+          <a href="/forgot-password" className="underline">Forgot password?</a>
+        </p>
       </div>
     </main>
   );

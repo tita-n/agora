@@ -4,7 +4,7 @@ import Link from "next/link";
  * Shared chrome for the admin area (Phase 2 close-out).
  *
  * SECURITY NOTE, stated because it matters: a layout is NOT a boundary.
- * Every admin page and route keeps its own server-side requireRole() /
+ * Every admin page and route keeps its own server-side isStaffId() / requireStaff() /
  * role check (and mutations keep the same-origin check) — this nav only
  * saves clicks. The links render for anyone who reaches /admin/*, but the
  * data behind each one is gated page-by-page.

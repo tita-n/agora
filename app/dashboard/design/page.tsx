@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { UserNav } from "@/components/user-nav";
 import { SiteDesign } from "@/components/site-design";
 import { parseSiteConfig } from "@/lib/site-config";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** Design editor (Phase 2.5): section order/visibility + colour + fonts,
  * stored as validated Business.siteConfig JSON. */
 export default async function DesignPage() {
-  const user = await requireRole(["business_owner"]);
+  const user = await requireUser();
   const business = (await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

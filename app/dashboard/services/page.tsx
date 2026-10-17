@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { ServiceManager, type ServiceRow } from "@/components/content-managers";
 import { MAX_SERVICES } from "@/lib/content-limits";
 import { UserNav } from "@/components/user-nav";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Services editor (Phase 2.5) — services + bookings theme content. */
 export default async function ServicesPage() {
-  const user = await requireRole(["business_owner"]);
+  const user = await requireUser();
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

@@ -37,7 +37,7 @@ const businessSelect = {
   mapsUrl: true,
   openingHours: true,
   siteConfig: true,
-  theme: { select: { templateKey: true } },
+  theme: { select: { slug: true } },
 } as const;
 
 type BusinessRow = {
@@ -56,7 +56,7 @@ type BusinessRow = {
   mapsUrl: string | null;
   openingHours: unknown;
   siteConfig: unknown;
-  theme: { templateKey: string } | null;
+  theme: { slug: string } | null;
 };
 
 const clampInt = (v: unknown, min: number, max: number, dflt: number): number => {
@@ -163,7 +163,7 @@ export async function resolveSiteDataById(businessId: string, opts: SiteQueryOpt
     productCount > 0 ? { page, pageSize, totalItems: productCount, totalPages } : null;
 
   return {
-    themeKey: business.theme?.templateKey ?? "minimal",
+    themeKey: business.theme?.slug ?? "minimal",
     business: {
       name: business.name,
       description: business.description,

@@ -63,14 +63,14 @@ const prisma = new PrismaClient();
 try {
   const existing = await prisma.user.findUnique({
     where: { email: parsedEmail },
-    select: { id: true, role: true },
+    select: { id: true, isStaff: true },
   });
   const hash = await bcrypt.hash(parsedPassword, 12);
 
-  if (existing && existing.role !== "admin" && !process.argv.includes("--force-role")) {
+  if (existing && !existing.isStaff && !process.argv.includes("--force-role")) {
     console.error(
-      `REFUSING: ${parsedEmail} already exists with role "${existing.role}".\n` +
-        `Changing an account's ROLE is a separate decision — re-run with --force-role if that is truly intended.`
+      `REFUSING: ${parsedEmail} exists WITHOUT staff.\n` +
+        `Promoting an existing account is a separate decision — re-run with --force-role if that is truly intended.`
     );
     process.exit(1);
   }
@@ -78,7 +78,7 @@ try {
   if (existing) {
     await prisma.user.update({
       where: { id: existing.id },
-      data: { password: hash, role: "admin" },
+      data: { password: hash, isStaff: true, emailVerifiedAt: new Date() },
     });
     console.log(
       `${existing.role === "admin" ? "password reset for" : "role changed to admin for"} ${parsedEmail} @ ${describeDbTarget(target)}`

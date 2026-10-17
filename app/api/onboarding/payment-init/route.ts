@@ -36,8 +36,18 @@ export async function POST(req: NextRequest) {
 
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role !== "business_owner") {
-    return NextResponse.json({ error: "Onboarding is for business owners" }, { status: 403 });
+  // Phase 0: any authenticated user can onboard (roles are gone) — but a
+  // NEW account must have verified its email before money moves. Accounts
+  // created before the migration are pre-verified by the SQL backfill.
+  const fresh = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { emailVerifiedAt: true },
+  });
+  if (!fresh?.emailVerifiedAt) {
+    return NextResponse.json(
+      { error: "Verify your email first — the link is in your inbox." },
+      { status: 403 }
+    );
   }
   if (!user.email) {
     return NextResponse.json({ error: "Account has no email — required for billing" }, { status: 400 });
@@ -89,7 +99,7 @@ export async function POST(req: NextRequest) {
   // resolved server-side from that key, so no money or id is ever accepted
   // from the browser (Phase 1's guarantee, extended not relaxed).
   const theme = await prisma.theme.findFirst({
-    where: { templateKey: draft.themeKey },
+    where: { slug: draft.themeSlug, status: "published" },
     orderBy: { createdAt: "asc" },
     select: { id: true, price: true },
   });

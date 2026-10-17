@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaffId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createBusinessFromDraft, parseSessionPayload, subdomainOccupancyIssue } from "@/lib/onboarding";
 import { isPrismaUniqueError } from "@/lib/db-error";
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role !== "admin") {
+  if (!(await isStaffId(user.id))) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 

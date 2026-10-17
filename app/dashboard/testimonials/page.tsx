@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { TestimonialManager, type TestimonialRow } from "@/components/content-managers";
 import { MAX_TESTIMONIALS } from "@/lib/content-limits";
 import { UserNav } from "@/components/user-nav";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Testimonials editor (Phase 2.5). Plain quotes — renders as text only. */
 export default async function TestimonialsPage() {
-  const user = await requireRole(["business_owner"]);
+  const user = await requireUser();
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

@@ -21,9 +21,6 @@ export async function ownerContext(req: NextRequest): Promise<OwnerContext> {
   }
   const user = await getCurrentUser();
   if (!user) return { ok: false, res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (user.role !== "business_owner") {
-    return { ok: false, res: NextResponse.json({ error: "Not allowed for this account type" }, { status: 403 }) };
-  }
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

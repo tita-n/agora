@@ -15,6 +15,8 @@
  * v4 surfaces it verbatim as signIn()'s res.error — a fixed token, not a
  * message, so nothing leaks through the error channel itself. */
 export const AUTH_INFRA_ERROR_CODE = "AuthInfrastructureFailure";
+export const AUTH_TOO_MANY_ERROR_CODE = "TooManyAttempts";
+
 
 /** The generic message for everything credential-shaped. */
 export const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
@@ -29,6 +31,8 @@ export const INFRA_FAILURE_MESSAGE =
 export function loginErrorMessage(nextAuthError: string | null | undefined): string {
   if (!nextAuthError) return "";
   if (nextAuthError === AUTH_INFRA_ERROR_CODE) return INFRA_FAILURE_MESSAGE;
+  if (nextAuthError === AUTH_TOO_MANY_ERROR_CODE)
+    return "Too many attempts — wait a little and try again.";
   // CredentialsSignin, AccessDenied, or anything else credential-shaped:
   // deliberately the SAME message for unknown codes — an unlisted error
   // must never become an information channel.

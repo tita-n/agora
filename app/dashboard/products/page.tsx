@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { ProductManager, type ProductRow } from "@/components/content-managers";
 import { MAX_PRODUCTS } from "@/lib/content-limits";
 import { UserNav } from "@/components/user-nav";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** Products editor (Phase 2.5). Business resolved from the SESSION — the
  * manager's API calls are scoped to it server-side, client ids never rule. */
 export default async function ProductsPage() {
-  const user = await requireRole(["business_owner"]);
+  const user = await requireUser();
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

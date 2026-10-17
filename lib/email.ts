@@ -13,13 +13,18 @@ export async function sendEmail(input: {
   to: string;
   subject: string;
   html: string;
+  /** dev convenience: also logged when the provider is not configured
+   * (single-use auth links — never set this for non-auth mail) */
+  devLink?: string;
 }): Promise<{ delivered: boolean; reason?: string }> {
   const key = env.RESEND_API_KEY;
   const from = env.RESEND_FROM_EMAIL;
   if (!key || !from) {
     console.log(
       `[email:not-configured] would send to ${input.to}: "${input.subject}" ` +
-        `(set RESEND_API_KEY + RESEND_FROM_EMAIL to actually deliver)`
+        `(set RESEND_API_KEY + RESEND_FROM_EMAIL to actually deliver)` +
+        (input.devLink && process.env.NODE_ENV !== "production" ? `
+[email:dev-link] ${input.devLink}` : "")
     );
     return { delivered: false, reason: "email provider not configured" };
   }
@@ -89,4 +94,41 @@ export function reminderEmailHtml(params: {
   <p>We activate renewal the same day we confirm the transfer. Questions?
   Reply to this email or reach us at <a href="${e(params.contactUrl)}">${e(params.contactUrl)}</a>.</p>
 </div>`;
+}
+
+/** Phase 0: account-verify + password-reset emails (links are single-use,
+ * hashed-in-DB tokens; in dev the helper logs the link instead of sending). */
+export function verificationEmailHtml(link: string): string {
+  return `<p>Welcome to Agora!</p>
+<p>Confirm this email address to activate your account. The link expires in 24 hours and works once:</p>
+<p><a href="${link}">Verify my email</a></p>
+<p>If the button does not work, paste this into your browser:<br><code>${link}</code></p>`;
+}
+
+export function passwordResetEmailHtml(link: string): string {
+  return `<p>Someone asked to reset your Agora password.</p>
+<p>Choose a new password with this one-time link (it expires in 30 minutes). If you did not ask for this, no action is needed — your current password stays valid:</p>
+<p><a href="${link}">Reset my password</a></p>
+<p>If the button does not work, paste this into your browser:<br><code>${link}</code></p>`;
+}
+
+/** Send the verify link; returns whether it was delivered so callers stay
+ * honest (the account is still usable — they can resend — soft-fail by
+ * design). */
+export async function sendVerificationEmail(to: string, link: string) {
+  return sendEmail({
+    to,
+    subject: "Confirm your Agora email",
+    html: verificationEmailHtml(link),
+    devLink: link,
+  });
+}
+
+export async function sendPasswordResetEmail(to: string, link: string) {
+  return sendEmail({
+    to,
+    subject: "Reset your Agora password",
+    html: passwordResetEmailHtml(link),
+    devLink: link,
+  });
 }

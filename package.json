@@ -19,7 +19,8 @@
     "admin:create": "tsx scripts/create-admin.ts",
     "accounts:lock-test": "tsx scripts/lock-test-accounts.ts",
     "test:ops": "tsx scripts/ops-units.ts",
-    "test:phase25": "tsx scripts/phase25-units.tsx"
+    "test:phase25": "tsx scripts/phase25-units.tsx",
+    "test:auth": "tsx scripts/auth-units.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

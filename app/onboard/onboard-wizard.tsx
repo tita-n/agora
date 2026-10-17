@@ -25,7 +25,8 @@ import type { PaymentInstructions } from "@/lib/payments/types";
 export interface WizardTheme {
   name: string;
   priceKobo: number;
-  templateKey: string;
+  slug: string;
+  description: string | null;
 }
 
 interface DayForm {
@@ -48,7 +49,7 @@ interface Draft {
   address: string;
   primaryColor: string;
   logoUrl: string;
-  themeKey: string;
+  themeSlug: string;
   whatsappNumber: string;
   instagramUrl: string;
   facebookUrl: string;
@@ -66,7 +67,7 @@ const EMPTY_DRAFT: Draft = {
   address: "",
   primaryColor: "#111827",
   logoUrl: "",
-  themeKey: "minimal",
+  themeSlug: "minimal",
   whatsappNumber: "",
   instagramUrl: "",
   facebookUrl: "",
@@ -95,7 +96,7 @@ const safeHex = (v: string) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : "#111827");
 
 function draftToSiteData(draft: Draft): SiteData {
   return {
-    themeKey: draft.themeKey,
+    themeKey: draft.themeSlug,
     business: {
       name: draft.name || "Your Business",
       description: draft.description || null,
@@ -156,7 +157,7 @@ export function OnboardWizard({
     setDraft((d) => ({ ...d, hours: { ...d.hours, [day]: { ...d.hours[day], ...patch } } }));
 
   const selectedTheme =
-    themes.find((t) => t.templateKey === draft.themeKey) ?? themes[0] ?? { name: "Minimal", priceKobo: 0, templateKey: "minimal" };
+    themes.find((t) => t.slug === draft.themeSlug) ?? themes[0] ?? { name: "Minimal", priceKobo: 0, slug: "minimal", description: null };
 
   // Step 1: debounced live availability (server runs lib/tenant rules + DB).
   useEffect(() => {
@@ -213,7 +214,7 @@ export function OnboardWizard({
         address: draft.address,
         primaryColor: draft.primaryColor,
         logoUrl: draft.logoUrl,
-        themeKey: draft.themeKey,
+        themeSlug: draft.themeSlug,
         whatsappNumber: draft.whatsappNumber || undefined,
         instagramUrl: draft.instagramUrl || undefined,
         facebookUrl: draft.facebookUrl || undefined,
@@ -250,7 +251,7 @@ export function OnboardWizard({
 
   const totalKobo = selectedTheme.priceKobo + hostingFeeKobo;
   const canLeaveStep1 = check.state === "ok";
-  const PreviewTheme = THEMES[draft.themeKey] ?? THEMES.minimal;
+  const PreviewTheme = THEMES[draft.themeSlug] ?? THEMES.minimal;
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">
@@ -511,15 +512,15 @@ export function OnboardWizard({
               </p>
               <div role="radiogroup" aria-label="Theme" className="mt-4 space-y-3">
                 {themes.map((theme) => {
-                  const meta = THEME_CATALOG.find((c) => c.key === theme.templateKey);
-                  const active = draft.themeKey === theme.templateKey;
+                  const meta = THEME_CATALOG.find((c) => c.key === theme.slug);
+                  const active = draft.themeSlug === theme.slug;
                   return (
                     <button
                       type="button"
-                      key={theme.templateKey}
+                      key={theme.slug}
                       role="radio"
                       aria-checked={active}
-                      onClick={() => set("themeKey", theme.templateKey)}
+                      onClick={() => set("themeSlug", theme.slug)}
                       className={`block w-full rounded-lg border p-4 text-left transition ${
                         active ? "border-gray-900 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-400"
                       }`}
@@ -531,7 +532,7 @@ export function OnboardWizard({
                       {meta && <p className="mt-1 text-xs text-gray-500">{meta.forWho}</p>}
                       <p className="mt-2 text-xs">
                         <a
-                          href={`/preview/${theme.templateKey}`}
+                          href={`/preview/${theme.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -544,7 +545,7 @@ export function OnboardWizard({
                   );
                 })}
               </div>
-              {draft.themeKey === "minimal" && (
+              {draft.themeSlug === "minimal" && (
                 <p className="mt-3 text-xs text-gray-400">
                   Minimal is a one-page card — catalog themes come with
                   product & menu editors after you go live.

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { GalleryManager, type GalleryRow } from "@/components/content-managers";
 import { MAX_GALLERY_IMAGES } from "@/lib/content-limits";
 import { UserNav } from "@/components/user-nav";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** Gallery editor (Phase 2.5). Uploads ride the same signed blob-token
  * flow as logos (products/gallery lanes); deletes free the storage. */
 export default async function GalleryPage() {
-  const user = await requireRole(["business_owner"]);
+  const user = await requireUser();
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
     orderBy: { createdAt: "asc" },

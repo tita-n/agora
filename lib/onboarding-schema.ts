@@ -80,10 +80,10 @@ export const draftSchema = z
       .or(z.literal(""))
       .transform((v) => (v === "" ? undefined : v))
       .optional(),
-    // ── Phase 2.5: theme pick + business contact basics ─────────────────
-    // A closed set of presentation KEYS (lib/theme-keys.ts) — never theme or
-    // price ids; payment-init resolves the row + price server-side.
-    themeKey: z.enum(THEME_KEYS).default(DEFAULT_THEME_KEY),
+    // ── Theme pick (Phase 0: a Theme row slug, resolved + priced against
+    // PUBLISHED rows server-side; payment-init owns the money, never the
+    // draft) + business contact basics ───────────────────────────────────
+    themeSlug: z.enum(THEME_KEYS).default(DEFAULT_THEME_KEY),
     whatsappNumber: z
       .string()
       .trim()

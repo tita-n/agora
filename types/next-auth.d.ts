@@ -1,28 +1,25 @@
 import type { DefaultSession } from "next-auth";
 
 /**
- * Module augmentation (finding L-1): `id` and `role` are part of the session
- * contract, so every consumer gets real types instead of `as any` casts.
- * `role` stays a plain string here so the types don't depend on Prisma
- * client generation; the DB-side enum (M-8) constrains it at the source.
+ * Module augmentation (finding L-1). Phase 0: the session carries IDENTITY
+ * only — capabilities (staff / developer / owner) are re-read from the
+ * database on every guarded render (lib/auth.ts), so a stale JWT can never
+ * grant access.
  */
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      role: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     id: string;
-    role: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     uid?: string;
-    role?: string;
   }
 }

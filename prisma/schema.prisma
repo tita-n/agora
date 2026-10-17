@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  business_owner
-  developer
-  admin
-}
-
 model Business {
   id         String   @id @default(cuid())
   name       String
@@ -94,41 +88,127 @@ model OnboardingSession {
 }
 
 model Theme {
-  id         String     @id @default(cuid())
-  name       String
-  // Phase 2.5: the presentation this theme row selects. Keys map to
-  // themes/registry.ts; unknown keys fall back to "minimal" at render time.
-  // Existing rows backfill to "minimal" via the column default (see
-  // migration 20261017130000_phase25_content).
-  templateKey String    @default("minimal")
-  devId      String
-  price      Int        // in kobo (smallest currency unit) to avoid float issues; must be > 0 — enforced by DB check (Theme_price_positive, see migration 20260912150000_phase1) and by chargeAmountKobo() before any payment calculation
-  category   String
-  createdAt  DateTime   @default(now())
-  dev        User       @relation(fields: [devId], references: [id])
-  businesses Business[]
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique // stable lowercase handle used in URLs + preview routes
+  description String?
+  categories  String[] @default([])
+  price       Int     // kobo; > 0 enforced by DB check (Theme_price_positive) + chargeAmountKobo()
+  category    String  // legacy single-label filter kept for the existing store UX
+  status      ThemeStatus @default(draft)
+  createdAt   DateTime @default(now())
+  developerId String // owning DeveloperProfile (was devId -> User, pre-Phase 0)
+  developer   DeveloperProfile @relation(fields: [developerId], references: [id])
+  // The ONE version tenants render. Null until a version is published;
+  // updates are explicit opt-ins per business (never silent).
+  currentVersionId String? @unique
+  currentVersion   ThemeVersion? @relation("ThemeCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  businesses  Business[]
 
-  @@index([devId])
+  @@index([developerId])
   @@index([category])
-  @@index([templateKey])
+  @@index([status])
+}
+
+enum ThemeStatus {
+  draft
+  in_review
+  published
+  rejected
+  unlisted
+}
+
+/// An immutable, validated template package release (docs/TEMPLATE_SPEC.md).
+/// Rows are never updated after publish — new release = new row + a
+/// deliberate Theme.currentVersionId flip.
+model ThemeVersion {
+  id         String   @id @default(cuid())
+  themeId    String
+  theme      Theme    @relation("ThemeCurrentVersion", fields: [themeId], references: [id], onDelete: Cascade)
+  version    String   // semver from theme.json; unique per theme
+  manifest   Json     // theme.json as validated
+  storageKey String   // immutable blob object ("local:<slug>" allowed in dev/preview only)
+  checksum   String   @unique // sha256 hex of the package zip
+  sizeBytes  Int
+  fileCount  Int
+  createdAt  DateTime @default(now())
+
+  @@unique([themeId, version])
+  @@index([themeId])
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
-  role      Role       @default(business_owner) // M-8: enum, not free string
+  id       String   @id @default(cuid())
+  email    String   @unique
+  password String
+  // Phase 0: roles are gone (no pick-a-role at signup). Capability is
+  // computed from THIS table on every guarded render: isStaff = platform
+  // staff (admin surfaces); "developer" = has a DeveloperProfile row;
+  // "business owner" = owns ≥1 Business. A user can be all three.
+  isStaff           Boolean   @default(false)
+  emailVerifiedAt   DateTime? // dev seed + migration backfill pre-verify; new signups click a link
+  passwordChangedAt DateTime? // reserved for future session-invalidation-on-reset
   createdAt DateTime   @default(now())
   businesses Business[]
-  themes     Theme[]
+  developerProfile DeveloperProfile?
   onboardingSessions OnboardingSession[]
   pendingPayments      PendingPayment[]     @relation("PaymentSubmitter")
   confirmedPayments    PendingPayment[]     @relation("PaymentConfirmer")
-  devPayouts       DevPayout[] @relation("DevPayouts")
   confirmedPayouts DevPayout[] @relation("PayoutConfirmer")
+  authTokens AuthToken[]
 
   // No @@index([email]) — @unique already provides the index (M-7).
-  @@index([role])
+}
+
+/// A user's developer identity (created via "Become a developer" in account
+/// settings). Owns themes; the payout ledger keys on this, not on User.
+model DeveloperProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  bio         String?
+  // Payout destination (optional at creation; required before a payout is
+  // ever marked paid — enforced in the payout flow, not the DB).
+  bankName        String?
+  accountName     String?
+  accountNumber   String? // 10 digits — CHECK constraint in the migration
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themes        Theme[]
+  devPayouts    DevPayout[]
+
+  @@index([userId])
+}
+
+/// Single-use, expiring email-verification & password-reset tokens. Only the
+/// sha256 hash is stored; the plaintext travels in the email link exactly
+/// once (docs/ARCHITECTURE.md).
+model AuthToken {
+  id        String         @id @default(cuid())
+  userId    String
+  kind      AuthTokenKind
+  tokenHash String         @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+}
+
+enum AuthTokenKind {
+  verify
+  reset
+}
+
+/// DB-backed login rate limiter (Phase 0) behind lib/rate-limit.ts's
+/// interface — swappable for Upstash/Redis without touching call sites.
+model LoginAttempt {
+  key         String   @id // sha256(email | ip) bucket
+  count       Int      @default(0)
+  windowStart DateTime
+  lockedUntil DateTime?
 }
 
 /**
@@ -230,7 +310,9 @@ model DevPayout {
   paidAt       DateTime?
   paidById     String?
 
-  dev      User  @relation("DevPayouts", fields: [devId], references: [id])
+  // Payouts key on the DEVELOPER PROFILE (Phase 0); confirmation stays a
+  // staff action on User.
+  dev      DeveloperProfile @relation(fields: [devId], references: [id])
   paidBy   User? @relation("PayoutConfirmer", fields: [paidById], references: [id], onDelete: SetNull)
 
   @@index([devId, status])

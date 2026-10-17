@@ -1,4 +1,4 @@
-import { requireRole, prisma } from "@/lib/auth";
+import { requireStaff, prisma } from "@/lib/auth";
 import { parseSessionPayload } from "@/lib/onboarding";
 import { formatNaira } from "@/lib/money";
 import { PaymentRowActions } from "./payment-actions";
@@ -73,7 +73,7 @@ function humanizeAge(createdAt: Date): string {
 }
 
 export default async function AdminPaymentsPage() {
-  await requireRole(["admin"]);
+  await requireStaff();
 
   const payments = await prisma.pendingPayment.findMany({
     where: { status: { in: ["pending", "processing"] } },

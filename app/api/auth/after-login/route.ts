@@ -1,32 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-config";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getCurrentUser, userCapabilities } from "@/lib/auth";
+import { postLoginPath } from "@/lib/routing";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Post-login landing router. Redirects are built from the request URL
- * (finding M-5), never from NEXTAUTH_URL — an absolute env-based target
- * silently sends users to a stale/localhost origin when the env var is
- * missing or misconfigured.
+ * Post-login landing (Phase 0 capability model): staff → /admin,
+ * an owner → /dashboard, a developer → /developer, everyone else → /onboard.
+ * Decided from a fresh DB read; the JWT carries identity only.
  */
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.redirect(new URL("/login", req.url));
-
-  // One condition per role, checked in order; the previous version routed
-  // admin into the business-owner branch (there was no /admin landing until
-  // Phase 2) and carried a dead `|| role === "admin"` in the developer
-  // branch below it — an unreachable second opinion on the same role.
-  const role = session.user.role;
-  if (role === "admin") {
-    return NextResponse.redirect(new URL("/admin", req.url));
-  }
-  if (role === "business_owner") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-  if (role === "developer") {
-    return NextResponse.redirect(new URL("/dev", req.url));
-  }
-  return NextResponse.redirect(new URL("/", req.url));
+export async function GET(_req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.redirect(new URL("/login", _req.nextUrl.origin));
+  const caps = await userCapabilities(user.id);
+  return NextResponse.redirect(new URL(postLoginPath(caps), _req.nextUrl.origin));
 }

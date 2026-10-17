@@ -12,80 +12,88 @@ const prisma = new PrismaClient();
 
 async function main() {
   const passwordHash = await bcrypt.hash("password123", 12);
+  const verified = new Date(); // dev fixtures skip the email round-trip
 
   const dev = await prisma.user.upsert({
     where: { email: "dev@agora.test" },
-    update: { password: passwordHash, role: "developer" },
+    update: { password: passwordHash },
     create: {
       email: "dev@agora.test",
       password: passwordHash,
-      role: "developer",
+      emailVerifiedAt: verified,
     },
+  });
+
+  // Phase 0: developer-ness is a DeveloperProfile row, not a role.
+  const devProfile = await prisma.developerProfile.upsert({
+    where: { userId: dev.id },
+    update: { displayName: "Agora Labs" },
+    create: { userId: dev.id, displayName: "Agora Labs", bio: "First-party templates." },
   });
 
   const owner = await prisma.user.upsert({
     where: { email: "owner@agora.test" },
-    update: { password: passwordHash, role: "business_owner" },
+    update: { password: passwordHash },
     create: {
       email: "owner@agora.test",
       password: passwordHash,
-      role: "business_owner",
+      emailVerifiedAt: verified,
     },
   });
 
-  const existingTheme = await prisma.theme.findFirst({
-    where: { devId: dev.id, name: "Minimal" },
-  });
   const admin = await prisma.user.upsert({
     where: { email: "admin@agora.test" },
-    update: { password: passwordHash, role: "admin" },
+    update: { password: passwordHash, isStaff: true },
     create: {
       email: "admin@agora.test",
       password: passwordHash,
-      role: "admin",
+      isStaff: true,
+      emailVerifiedAt: verified,
     },
   });
-  void admin; // role exists for /admin/payments; no further seeding needed
+  void admin; // isStaff unlocks /admin; nothing else to seed
 
-  const theme = existingTheme
-    ? await prisma.theme.update({
-        where: { id: existingTheme.id },
-        data: { price: 5000, category: "Business", templateKey: "minimal" },
-      })
-    : await prisma.theme.create({
-        data: {
-          name: "Minimal",
-          devId: dev.id,
-          price: 5000, // kobo = ₦50.00
-          category: "Business",
-          templateKey: "minimal",
-        },
-      });
-
-  // Phase 2.5: the three content themes exist as purchasable rows (price =
-  // data, rendering = code in themes/registry.ts). Same dev owns them in the
-  // fixture so payout math stays exercised.
-  const contentThemes: { name: string; price: number; category: string; templateKey: string }[] = [
-    { name: "Boutique", price: 15000, category: "Retail", templateKey: "boutique" },
-    { name: "Bistro", price: 12000, category: "Food", templateKey: "bistro" },
-    { name: "Studio", price: 12000, category: "Services", templateKey: "studio" },
+  // First-party template packages, seeded PUBLISHED. The engine renders all
+  // of them from `themes-packages/<slug>` (dev/preview) or immutable blob
+  // versions once `npm run theme:publish` has uploaded them.
+  const themeSpecs: {
+    slug: string;
+    name: string;
+    price: number;
+    category: string;
+    description: string;
+    categories: string[];
+  }[] = [
+    { slug: "minimal", name: "Minimal", price: 5000, category: "Business", description: "One clean page: who you are, what you do, how to reach you.", categories: ["business", "services"] },
+    { slug: "boutique", name: "Boutique", price: 15000, category: "Retail", description: "Catalog-first storefront with per-item WhatsApp ordering.", categories: ["retail", "fashion"] },
+    { slug: "bistro", name: "Bistro", price: 12000, category: "Food", description: "Menu by course, prominent hours, big Order-on-WhatsApp button.", categories: ["food", "restaurant"] },
+    { slug: "studio", name: "Studio", price: 12000, category: "Services", description: "Services with prices and per-service booking links.", categories: ["services", "salon"] },
   ];
-  for (const spec of contentThemes) {
-    const found = await prisma.theme.findFirst({ where: { devId: dev.id, name: spec.name } });
-    if (found) {
-      await prisma.theme.update({ where: { id: found.id }, data: spec });
-    } else {
-      await prisma.theme.create({ data: { ...spec, devId: dev.id } });
-    }
+  let theme: { id: string } | null = null;
+  for (const spec of themeSpecs) {
+    const data = {
+      name: spec.name,
+      price: spec.price,
+      category: spec.category,
+      description: spec.description,
+      categories: spec.categories,
+      status: "published" as const,
+      developerId: devProfile.id,
+    };
+    const found = await prisma.theme.findUnique({ where: { slug: spec.slug } });
+    const row = found
+      ? await prisma.theme.update({ where: { id: found.id }, data })
+      : await prisma.theme.create({ data: { ...data, slug: spec.slug } });
+    if (spec.slug === "minimal") theme = row;
   }
+  if (!theme) throw new Error("seed: minimal theme missing after upsert");
 
   await prisma.business.upsert({
     where: { subdomain: "demo" },
     update: {
       name: "Demo Boutique",
       ownerId: owner.id,
-      themeId: theme.id, // deliberately STILL Minimal: acceptance check —
-      // existing Minimal-based sites must render exactly as before 2.5
+      themeId: theme.id, // Minimal package renders Demo Boutique (port parity check)
       subscriptionStatus: "active",
     },
     create: {

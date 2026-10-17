@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole, prisma } from "@/lib/auth";
+import { requireUser, prisma } from "@/lib/auth";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
 import { formatNaira } from "@/lib/money";
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * user (one business per account in Phase 1) — no client-supplied ids.
  */
 export default async function DashboardPage() {
-  const user = await requireRole(["business_owner", "admin"]);
+  const user = await requireUser();
 
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },

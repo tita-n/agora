@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { UserNav } from "@/components/user-nav";
 import { RunButton } from "./run-button";
 
@@ -51,7 +51,7 @@ const JOBS: {
 ];
 
 export default async function AdminOpsPage() {
-  await requireRole(["admin"]);
+  await requireStaff();
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12">

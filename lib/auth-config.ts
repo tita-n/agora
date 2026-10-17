@@ -5,10 +5,17 @@ import { prisma } from "./prisma";
 import { env } from "./env";
 import {
   AUTH_INFRA_ERROR_CODE,
+  AUTH_TOO_MANY_ERROR_CODE,
   authLogContext,
   classifyThrown,
   normalizeEmail,
 } from "./auth-errors";
+import { guardAction, noteFailure, noteSuccess } from "./rate-limit";
+
+/** Constant dummy for timing-equalized "user not found" (never a real
+ * password's hash — its value is irrelevant, only its cost is). Computed
+ * once per process at first import. */
+const DUMMY_HASH = bcrypt.hashSync("timing-equalization-placeholder", 10);
 
 /**
  * NextAuth configuration only (finding L-2). The route handler instance
@@ -29,11 +36,20 @@ export const authOptions: NextAuthOptions = {
         const password = credentials?.password;
         if (!email || typeof password !== "string" || !password) return null;
 
+        // Rate limit BEFORE any bcrypt work (Phase 0). Throwing a fixed
+        // code keeps the outcome generic; the UI maps it to "try again
+        // later" (which, unlike the infra code, never varies by account
+        // existence… it only varies by attempt count).
+        const locked = await guardAction("login", email);
+        if (locked) throw new Error(AUTH_TOO_MANY_ERROR_CODE);
+
         let user;
         try {
+          // Phase 0: no role column — capabilities are DB-derived per render
+          // (lib/auth.ts guards); the JWT only carries identity.
           user = await prisma.user.findUnique({
             where: { email },
-            select: { id: true, email: true, role: true, password: true },
+            select: { id: true, email: true, password: true },
           });
         } catch (err) {
           // Data-layer failure (M-12): report DISTINCTLY now (Part 2) —
@@ -46,7 +62,14 @@ export const authOptions: NextAuthOptions = {
           console.error(authLogContext("lookup", classifyThrown(err)));
           throw new Error(AUTH_INFRA_ERROR_CODE);
         }
-        if (!user) return null; // exact same generic outcome as a wrong password
+        if (!user) {
+          // Timing equalization (Phase 0 hardening): compare against a dummy
+          // hash so "no such account" costs the same as "wrong password" —
+          // then return the identical generic failure.
+          await bcrypt.compare(password, DUMMY_HASH).catch(() => undefined);
+          await noteFailure("login", email);
+          return null;
+        }
 
         let valid = false;
         try {
@@ -57,24 +80,26 @@ export const authOptions: NextAuthOptions = {
           console.error(authLogContext("hash-compare", classifyThrown(err)));
           throw new Error(AUTH_INFRA_ERROR_CODE);
         }
-        if (!valid) return null;
+        if (!valid) {
+          await noteFailure("login", email);
+          return null;
+        }
+        await noteSuccess("login", email);
 
-        const { id, email: e, role } = user;
-        return { id, email: e, role };
+        const { id, email: e } = user;
+        return { id, email: e };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
         token.uid = user.id;
       }
       return token;
     },
     async session({ session, token }) {
       if (token.uid) session.user.id = token.uid;
-      if (token.role) session.user.role = token.role;
       return session;
     },
   },

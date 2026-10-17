@@ -27,8 +27,6 @@ export async function POST(req: NextRequest) {
   }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.role !== "business_owner")
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const business = await prisma.business.findFirst({
     where: { ownerId: user.id },
