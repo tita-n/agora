@@ -4,7 +4,7 @@
  *   1. same-origin (cookie-auth mutation; NextAuth only CSRF-protects its
  *      own endpoints),
  *   2. authenticated session,
- *   3. role business_owner (admins manage via their own surfaces),
+ *   3. owner capability (owns the business — admins manage via their own surfaces),
  *   4. the business is resolved FROM THE SESSION — businessId never travels
  *      from the client (IDOR rule: every item query below is
  *      `where: { id, businessId }`).

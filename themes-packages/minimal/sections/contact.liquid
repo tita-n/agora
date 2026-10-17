@@ -1,0 +1,8 @@
+<section class="contact">
+  <ul>
+    {%- if business.contactPhone %}<li><a href="tel:{{ business.contactPhone }}">{{ business.contactPhone }}</a></li>{% endif -%}
+    {%- if business.contactEmail %}<li><a href="mailto:{{ business.contactEmail }}">Email</a></li>{% endif -%}
+    {%- if business.address %}<li>{{ business.address }}{%- if business.mapsUrl %} · <a href="{{ business.mapsUrl }}">Map</a>{% endif %}</li>{% endif -%}
+    {%- if business.instagramUrl %}<li><a href="{{ business.instagramUrl }}">Instagram</a></li>{% endif -%}
+  </ul>
+</section>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ meta.title | default: business.name }}</title>
+    {% if meta.description %}<meta name="description" content="{{ meta.description }}" />{% endif %}
+    {% if meta.canonicalUrl %}<link rel="canonical" href="{{ meta.canonicalUrl }}" />{% endif %}
+    <meta property="og:title" content="{{ business.name }}" />
+    {% if meta.description %}<meta property="og:description" content="{{ meta.description }}" />{% endif %}
+    {% if meta.ogImageUrl %}<meta property="og:image" content="{{ meta.ogImageUrl | image_url }}" />{% endif %}
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="{{ 'theme.css' | asset_url }}" />
+  </head>
+  <body class="theme-boutique pair-{{ settings.font_pair }}" style="--primary: {{ settings.primary_color }}">
+    {{ content_for_layout }}
+    <footer class="site-foot">
+      <p>{{ business.name }} · powered by <a href="{{ agora.href }}">Agora</a></p>
+      {{ 'footer-strip' | slot }}
+    </footer>
+  </body>
+  {{ 'floating-widget' | slot }}
+</html>

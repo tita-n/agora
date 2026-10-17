@@ -1,3 +1,7 @@
+import { createHash } from "crypto";
+import fs from "fs";
+import path from "path";
+import { zipSync } from "fflate";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -85,28 +89,83 @@ async function main() {
       ? await prisma.theme.update({ where: { id: found.id }, data })
       : await prisma.theme.create({ data: { ...data, slug: spec.slug } });
     if (spec.slug === "minimal") theme = row;
+
+    // Engine version row: dev/preview reads the repo checkout via the
+    // "local:<slug>" storage key; production only ever serves blob-uploaded
+    // zips written by `npm run theme:publish`.
+    const pkgDir = path.join(process.cwd(), "themes-packages", spec.slug);
+    if (fs.existsSync(pkgDir)) {
+      const entries: Record<string, Uint8Array> = {};
+      let sizeBytes = 0;
+      let fileCount = 0;
+      const walk = (dir: string, rel = "") => {
+        for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (ent.name.startsWith(".")) continue;
+          const relPath = rel ? `${rel}/${ent.name}` : ent.name;
+          if (ent.isDirectory()) walk(path.join(dir, ent.name), relPath);
+          else {
+            const bytes = new Uint8Array(fs.readFileSync(path.join(dir, ent.name)));
+            entries[relPath] = bytes;
+            sizeBytes += bytes.byteLength;
+            fileCount++;
+          }
+        }
+      };
+      walk(pkgDir);
+      const zip = zipSync(entries, { level: 6 });
+      const checksum = createHash("sha256").update(zip).digest("hex");
+      const manifest = JSON.parse(fs.readFileSync(path.join(pkgDir, "theme.json"), "utf8")) as Record<string, unknown>;
+      const version = (entries["layout.liquid"] ? "1.0.0" : "1.0.0") as string;
+      const vrow = await prisma.themeVersion.upsert({
+        where: { themeId_version: { themeId: row.id, version } },
+        update: {
+          manifest: manifest as never,
+          storageKey: `local:${spec.slug}`,
+          checksum,
+          sizeBytes,
+          fileCount,
+        },
+        create: {
+          themeId: row.id,
+          version,
+          manifest: manifest as never,
+          storageKey: `local:${spec.slug}`,
+          checksum,
+          sizeBytes,
+          fileCount,
+        },
+      });
+      await prisma.theme.update({ where: { id: row.id }, data: { currentVersionId: vrow.id } });
+      console.log(`theme ${spec.slug}: v${version} seeded (${fileCount} files, ${(sizeBytes / 1024).toFixed(0)}KB)`);
+    } else {
+      console.log(`theme ${spec.slug}: no themes-packages directory — rows left without a version`);
+    }
   }
   if (!theme) throw new Error("seed: minimal theme missing after upsert");
+  // The demo site runs the BOUTIQUE package end-to-end (port-parity check:
+  // the same business, rendered by the engine instead of the old React theme).
+  const boutique = await prisma.theme.findUnique({ where: { slug: "boutique" }, select: { id: true } });
+  const demoTheme = boutique ?? theme;
 
   await prisma.business.upsert({
     where: { subdomain: "demo" },
     update: {
       name: "Demo Boutique",
       ownerId: owner.id,
-      themeId: theme.id, // Minimal package renders Demo Boutique (port parity check)
+      themeId: demoTheme.id, // boutique package renders Demo Boutique (port parity check)
       subscriptionStatus: "active",
     },
     create: {
       name: "Demo Boutique",
       subdomain: "demo",
       ownerId: owner.id,
-      themeId: theme.id,
+      themeId: demoTheme.id,
       description:
         "Handpicked fabrics, made-to-order pieces, and alterations — style that fits, not just size.",
       contactEmail: "hello@demoboutique.example",
       contactPhone: "+234 801 234 5678",
       address: "12 Awolowo Road, Ikoyi, Lagos",
-      primaryColor: "#7c3aed",
+      primaryColor: "#115e4a",
       subscriptionStatus: "active",
       nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       // Phase 2.5 fixtures for the profile round-trip (Minimal ignores these;

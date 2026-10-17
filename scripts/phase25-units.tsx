@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 /**
  * npm run test:phase25 — unit tests for everything Phase 2.5 extracted as
  * PURE logic: whatsapp normalization, social-URL allowlist, colour contrast,
@@ -27,19 +29,10 @@ import {
 } from "../lib/site-config";
 import { parseOpeningHours, openingHoursInput, hoursRangeLabel, WEEKDAYS } from "../lib/opening-hours";
 import { productInput, serviceInput, testimonialInput, reorderInput } from "../lib/content-schema";
-import { priceText } from "../lib/site-data";
+import { formatKobo } from "../lib/site-data";
 import { THEME_KEYS } from "../lib/theme-keys";
 import { isOurBlobUrl, blobPathname } from "../lib/blob-url";
-import * as React from "react";
-/**
- * Sandbox-runner detail: tsx compiles JSX with the classic runtime, so the
- * theme modules (imported here as pure modules — nothing renders yet) need
- * a global React when their functions are CALLED below. Harmless under the
- * real Next build (which uses the automatic runtime).
- */
-(globalThis as { React?: unknown }).React = React;
-import { THEMES, resolveTheme } from "../themes/registry";
-import { previewSiteData, previewProduct } from "../lib/preview-fixtures";
+
 
 let pass = 0;
 let fail = 0;
@@ -167,41 +160,24 @@ eq(isOurBlobUrl("https://evil.com/x.png"), false, "not ours");
 eq(isOurBlobUrl("https://public.blob.vercel-storage.com.evil.co/x"), false, "suffix trick rejected");
 eq(blobPathname("https://abc.public.blob.vercel-storage.com/logos/u1/l.png"), "logos/u1/l.png", "pathname extract");
 
-// ── price text ─────────────────────────────────────────────────────────────
-eq(priceText(null), "Price on request", "null price");
-eq(priceText(961410), "₦9,614", "kobo → naira, no decimals");
-eq(priceText(150000000, "from"), "from ₦1,500,000", "label prefix + grouping");
+// ── price text + package registry parity (engine era) ────────────────────
+eq(formatKobo(961410), "₦9,614", "kobo → naira, no decimals");
+eq(formatKobo(150000000, "from"), "from ₦1,500,000", "label prefix + grouping");
 
-// ── registry parity + theme render smoke ─────────────────────────────────
-eq(Object.keys(THEMES).sort(), [...THEME_KEYS].sort(), "registry covers EXACTLY lib/theme-keys");
-eq(resolveTheme("does-not-exist").key, "minimal", "unknown key falls back to minimal");
-eq(resolveTheme(null).key, "minimal", "null key falls back to minimal");
-
-for (const key of THEME_KEYS) {
-  const theme = THEMES[key];
-  ok(!!theme, `theme ${key} registered`);
-  for (const state of ["full", "empty"] as const) {
-    const data = previewSiteData(key, state);
-    let element: unknown = null;
-    let threw = false;
-    try {
-      element = theme.Site({ data, agoraHref: "https://agora.test" });
-    } catch {
-      threw = true;
-    }
-    ok(!threw && element !== null && typeof element === "object", `${key} renders (${state}) without throwing`);
-  }
-  if (theme.ProductPage) {
-    const product = previewProduct(key, key === "bistro" ? "m-jollof" : "p-anara");
-    ok(!!product, `${key} fixture product exists`);
-    let threw = false;
-    try {
-      theme.ProductPage({ data: previewSiteData(key, "full"), product: product!, agoraHref: "/" });
-    } catch {
-      threw = true;
-    }
-    ok(!threw, `${key} product page renders without throwing`);
-  }
+// THEME_KEYS (onboarding validator) must cover EXACTLY the packages shipped
+// in themes-packages/ — a package without a key can never be chosen, a key
+// without a package would seed a broken listing.
+const pkgsRoot = path.join(process.cwd(), "themes-packages");
+const shipped = fs
+  .readdirSync(pkgsRoot, { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => d.name)
+  .sort();
+eq(shipped, [...THEME_KEYS].sort(), "themes-packages/ covers EXACTLY lib/theme-keys");
+for (const slug of shipped) {
+  ok(fs.existsSync(path.join(pkgsRoot, slug, "theme.json")), slug + ": theme.json present");
+  ok(fs.existsSync(path.join(pkgsRoot, slug, "layout.liquid")), slug + ": layout.liquid present");
+  ok(fs.existsSync(path.join(pkgsRoot, slug, "fixtures", "empty.json")), slug + ": empty fixture present");
 }
 
 // XSS-named product renders as React text (element props carry the raw

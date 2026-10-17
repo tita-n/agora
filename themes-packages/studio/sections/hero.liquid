@@ -1,0 +1,7 @@
+<section class="hero">
+  {%- if business.logoUrl %}<img class="logo" src="{{ business.logoUrl | image_url }}" alt="" width="64" height="64" />{% endif -%}
+  <h1>{{ business.name }}</h1>
+  {%- if business.description %}<p class="lede">{{ business.description | truncate: 180 }}</p>{% endif -%}
+  <p class="note">{{ settings.booking_note }}</p>
+  {%- if business.whatsappUrl %}<a class="btn" href="{{ business.whatsappUrl }}">Book on WhatsApp</a>{% endif -%}
+</section>

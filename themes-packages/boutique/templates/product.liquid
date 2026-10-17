@@ -1,0 +1,29 @@
+<main class="site product-page">
+  <article class="pd">
+    <a class="pd-back" href="./">&larr; All pieces</a>
+    <div class="pd-gallery">
+      {%- for img in product.imageUrls -%}
+      <img src="{{ img | image_url }}" alt="{{ product.name }}" loading="lazy" />
+      {%- endfor -%}
+      {%- if product.imageUrls.size == 0 -%}
+      <div class="pd-missing">No photo yet</div>
+      {%- endif -%}
+    </div>
+    <h1 class="pd-name">{{ product.name }}</h1>
+    <p class="pd-price">
+      {%- if product.price -%}{{ product.price }}
+      {%- else -%}Price on request{%- endif -%}
+    </p>
+    {%- if product.category %}<p class="pd-cat">{{ product.category }}</p>{% endif -%}
+    {%- if product.description %}<p class="pd-desc">{{ product.description }}</p>{% endif -%}
+    {%- unless product.inStock %}<p class="badge badge-out">Currently out of stock</p>{% endunless -%}
+    <p class="pd-actions">
+      {%- if product.waLink -%}
+      <a class="btn" href="{{ product.waLink }}">Order on WhatsApp</a>
+      {%- endif -%}
+      {%- if business.contactPhone -%}
+      <a class="btn btn-quiet" href="tel:{{ business.contactPhone }}">Call the shop</a>
+      {%- endif -%}
+    </p>
+  </article>
+</main>

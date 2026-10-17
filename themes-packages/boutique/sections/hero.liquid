@@ -1,0 +1,10 @@
+<section class="hero">
+  {%- if business.logoUrl %}<img class="hero-logo" src="{{ business.logoUrl | image_url }}" alt="{{ business.name }}" width="72" height="72" />{% endif -%}
+  <h1 class="hero-name">{{ business.name }}</h1>
+  {%- if business.tagline %}<p class="hero-tag">{{ business.tagline }}</p>{% endif -%}
+  {%- if business.description %}<p class="hero-desc">{{ business.description | truncate: 220 }}</p>{% endif -%}
+  <p class="hero-cta">
+    {%- if business.whatsappUrl %}<a class="btn" href="{{ business.whatsappUrl }}">Chat on WhatsApp</a>{% endif -%}
+    {%- if filters.categories.size > 0 %}<a class="btn btn-quiet" href="#catalog">Browse the catalogue</a>{% endif -%}
+  </p>
+</section>

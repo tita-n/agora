@@ -1,0 +1,5 @@
+{%- if hours.size > 0 -%}
+<section class="band"><h2>Hours</h2>
+  <dl class="h">{% for h in hours %}<div><dt>{{ h.day }}</dt><dd>{% if h.closed %}Closed{% else %}{{ h.open }}–{{ h.close }}{% endif %}</dd></div>{% endfor %}</dl>
+</section>
+{%- endif -%}

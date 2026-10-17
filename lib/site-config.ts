@@ -47,6 +47,9 @@ export type SiteConfig = {
   sections: SiteSectionConfig[];
   primaryColor: string; // normalized lowercase hex — validated before storage
   fontPairKey: FontPairKey;
+  /** theme-package settings (engine `settings` scope) — opaque primitives,
+   * keys validated against the package manifest at render, not here */
+  themeSettings: Record<string, string | number | boolean>;
 };
 
 const sectionSchema = z
@@ -61,8 +64,25 @@ export const siteConfigSchema = z
     sections: z.array(sectionSchema).min(1, "Pick at least one section").max(SECTION_TYPES.length * 2, "Too many sections"),
     primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #1a7f5a"),
     fontPairKey: z.enum(FONT_PAIR_KEYS),
+    themeSettings: z
+      .record(z.union([z.string().max(120), z.number(), z.boolean()]))
+      .refine((r) => Object.keys(r).length <= 24, "Too many theme settings")
+      .default({}),
   })
   .strict();
+
+function sanitizeThemeSettings(raw: unknown): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>).slice(0, 24)) {
+      if (!/^[a-z][a-z0-9_]{1,30}$/.test(k)) continue;
+      if (typeof v === "string" && v.length <= 120) out[k] = v;
+      else if (typeof v === "boolean") out[k] = v;
+      else if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+    }
+  }
+  return out;
+}
 
 /** Write path: parse + normalize (dedupe section types, append missing). */
 export function normalizeSections(sections: SiteSectionConfig[]): SiteSectionConfig[] {
@@ -86,6 +106,7 @@ export function buildSiteConfig(input: z.input<typeof siteConfigSchema>): SiteCo
     sections: normalizeSections(parsed.data.sections),
     primaryColor: normalizeHexColor(parsed.data.primaryColor) ?? "#111827",
     fontPairKey: parsed.data.fontPairKey,
+    themeSettings: sanitizeThemeSettings(parsed.data.themeSettings),
   };
 }
 
@@ -96,6 +117,7 @@ export function defaultSiteConfig(themePrimary?: string | null): SiteConfig {
     sections: normalizeSections(DEFAULT_SECTION_ORDER.map((type) => ({ type, enabled: true }))),
     primaryColor: normalizeHexColor(themePrimary) ?? "#111827",
     fontPairKey: "clean",
+    themeSettings: {},
   };
 }
 
@@ -125,7 +147,7 @@ export function parseSiteConfig(raw: unknown, legacyPrimary?: string | null): Si
     ? (r.fontPairKey as FontPairKey)
     : base.fontPairKey;
 
-  return { sections: normalized, primaryColor: color ?? base.primaryColor, fontPairKey: font };
+  return { sections: normalized, primaryColor: color ?? base.primaryColor, fontPairKey: font, themeSettings: sanitizeThemeSettings(r.themeSettings) };
 }
 
 /** Sections to render for a site: enabled AND backed by content. */

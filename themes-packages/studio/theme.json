@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "id": "studio",
+  "name": "Studio Light",
+  "version": "1.0.0",
+  "description": "For hair, lashes and bridal studios: a services list with per-service booking links, a work gallery that stays light on data, hours, and testimonials.",
+  "categories": ["beauty", "services", "salon"],
+  "supportedSections": ["hero", "about", "services", "gallery", "testimonials", "hours", "contact"],
+  "pluginSlots": [],
+  "settings": {
+    "primary_color": { "type": "color", "default": "#8a5a83", "label": "Accent colour" },
+    "font_pair": { "type": "select", "default": "editorial", "options": ["clean", "editorial"], "label": "Fonts" },
+    "booking_note": { "type": "text", "default": "By appointment — 24h notice keeps your slot free.", "label": "Booking note" }
+  }
+}

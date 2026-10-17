@@ -1,0 +1,3 @@
+Demo template package for the Agora platform (Phase 0 sample).
+MIT License — free to copy, adapt and sell as a starting point for your own
+Agora template packages. The package format is defined in docs/TEMPLATE_SPEC.md.

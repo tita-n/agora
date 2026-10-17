@@ -1,0 +1,17 @@
+{
+  "business": {
+    "name": "Àṣọ Atelier",
+    "description": "Hand-dyed fabrics and made-to-order pieces in Yaba. Style that fits, not just size.",
+    "contactPhone": "+234 801 234 5678",
+    "contactEmail": "hello@asosatelier.example",
+    "address": "12 Herbert Macaulay Way, Yaba, Lagos",
+    "whatsappUrl": "https://wa.me/2348012345678?text=Hi%20%C3%80%E1%B9%A3%E1%BB%8D%20Atelier"
+  },
+  "meta": { "title": "Àṣọ Atelier", "description": "Hand-dyed fabrics and made-to-order pieces in Yaba." },
+  "sections": [
+    { "type": "hero", "enabled": true },
+    { "type": "about", "enabled": true },
+    { "type": "contact", "enabled": true }
+  ],
+  "settings": { "primary_color": "#14261d" }
+}

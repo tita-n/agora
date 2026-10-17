@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "id": "boutique",
+  "name": "Demo Boutique",
+  "version": "1.0.0",
+  "description": "A catalogue front page for fashion and fabric shops: editorial hero, category chips, product grid with stock badges, testimonials, opening hours and WhatsApp ordering on every piece.",
+  "categories": ["retail", "fashion", "commerce"],
+  "supportedSections": ["hero", "about", "products", "testimonials", "hours", "contact"],
+  "pluginSlots": [],
+  "settings": {
+    "primary_color": { "type": "color", "default": "#115e4a", "label": "Accent colour" },
+    "font_pair": { "type": "select", "default": "editorial", "options": ["clean", "editorial"], "label": "Fonts" },
+    "show_out_of_stock": { "type": "boolean", "default": true, "label": "Show out-of-stock pieces" }
+  }
+}

@@ -1,0 +1,15 @@
+<section class="hero">
+  <h1>{{ business.name }}</h1>
+  {%- if business.description %}<p class="lede">{{ business.description | truncate: 160 }}</p>{% endif -%}
+  {%- if hours.size > 0 -%}
+  <p class="tonight">
+    {%- for h in hours -%}
+      {%- if h.closed == false %}Today {{ h.open }}–{{ h.close }}{% break %}{% endif -%}
+    {%- endfor -%}
+  </p>
+  {%- endif -%}
+  <p class="cta">
+    {%- if business.whatsappUrl %}<a class="btn" href="{{ business.whatsappUrl }}">Book a table</a>{% endif -%}
+    {%- if business.contactPhone %}<a class="btn btn-o" href="tel:{{ business.contactPhone }}">Call</a>{% endif -%}
+  </p>
+</section>

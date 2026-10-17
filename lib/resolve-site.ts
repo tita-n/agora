@@ -1,17 +1,18 @@
 /**
- * resolveSiteData — builds the theme contract payload from the database
- * (Phase 2.5). THE single read path for tenant rendering (subdomain page,
- * custom-domain page, metadata all share it, so what you see and what the
- * og-tags promise can never disagree).
+ * resolveSiteData — builds the SiteData v1 contract payload from the
+ * database. THE single read path for tenant rendering (subdomain routes,
+ * custom domains and previews share it, so what renders and what the og
+ * tags promise can never disagree).
  *
- * Hard rules encoded here:
+ * Hard rules encoded here (unchanged from Phase 2.5):
  *  - explicit `select` on every query; content scoped by businessId;
  *  - EVERYTHING stored is re-validated at read: siteConfig/openingHours via
  *    their defensive parsers, image URLs against our blob host, social/map
- *    URLs through the same allowlist functions used at write time, whatsapp
- *    as a digits regex. A hand-edited row degrades to "that field doesn't
- *    exist" — it can never inject an href. Themes render these strings as
- *    plain React text.
+ *    URLs through the write-time allowlist functions, WhatsApp as a digits
+ *    regex. A hand-edited row degrades to "that field doesn't exist" — it
+ *    can never inject an href.
+ *  - WhatsApp links are built HERE (server-side, absolute https), templates
+ *    only print them.
  */
 import { prisma } from "./prisma";
 import { isOurBlobUrl } from "./blob-url";
@@ -19,7 +20,13 @@ import { normalizeSocialUrl, type SocialPlatform } from "./contacts";
 import { parseOpeningHours } from "./opening-hours";
 import { parseSiteConfig } from "./site-config";
 import { MAX_IMAGES_PER_PRODUCT, PAGE_SIZE_PRODUCTS } from "./content-limits";
-import type { SiteData, SiteGalleryImage, SiteProduct, SitePagination } from "./site-data";
+import {
+  buildWaLink,
+  formatKobo,
+  formatHours,
+  siteDataSchema,
+  type SiteData,
+} from "@/core/agora-engine/site-data";
 
 const businessSelect = {
   id: true,
@@ -37,7 +44,6 @@ const businessSelect = {
   mapsUrl: true,
   openingHours: true,
   siteConfig: true,
-  theme: { select: { slug: true } },
 } as const;
 
 type BusinessRow = {
@@ -56,7 +62,6 @@ type BusinessRow = {
   mapsUrl: string | null;
   openingHours: unknown;
   siteConfig: unknown;
-  theme: { slug: string } | null;
 };
 
 const clampInt = (v: unknown, min: number, max: number, dflt: number): number => {
@@ -65,15 +70,41 @@ const clampInt = (v: unknown, min: number, max: number, dflt: number): number =>
   return Math.min(max, Math.max(min, Math.floor(n)));
 };
 
-function revalidateSocial(platform: SocialPlatform, stored: string | null): string | null {
-  if (!stored) return null;
+function revalidateSocial(platform: SocialPlatform, stored: string | null): string | undefined {
+  if (!stored) return undefined;
   const r = normalizeSocialUrl(platform, stored);
-  return r.ok && r.url ? r.url : null;
+  return r.ok && r.url ? r.url : undefined;
 }
+
+const digitsOrNull = (v: string | null): string | null =>
+  typeof v === "string" && /^[1-9]\d{7,14}$/.test(v) ? v : null;
 
 export interface SiteQueryOpts {
   page?: string | number | null;
   category?: string | null;
+  /** request host — feeds meta.canonicalUrl so SEO tags agree with the URL */
+  host?: string | null;
+}
+
+const productSelect = {
+  id: true, name: true, description: true, priceKobo: true, category: true, inStock: true, imageUrls: true,
+} as const;
+type ProductRow = { id: string; name: string; description: string | null; priceKobo: number | null; category: string | null; inStock: boolean; imageUrls: string[] };
+
+function mapProduct(p: ProductRow, shopName: string, whatsapp: string | null): SiteData["products"][number] {
+  const price = typeof p.priceKobo === "number" && p.priceKobo >= 0 ? p.priceKobo : null;
+  return {
+    id: p.id,
+    name: p.name,
+    ...(p.description ? { description: p.description } : {}),
+    ...(price !== null ? { priceKobo: price } : {}),
+    ...(price !== null ? { price: formatKobo(price) } : {}),
+    ...(p.category ? { category: p.category } : {}),
+    inStock: p.inStock !== false,
+    imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls.filter(isOurBlobUrl).slice(0, MAX_IMAGES_PER_PRODUCT) : [],
+    ...(buildWaLink(whatsapp, `Hi ${shopName}, I'd like to order: ${p.name}`) ? { waLink: buildWaLink(whatsapp, `Hi ${shopName}, I'd like to order: ${p.name}`)! } : {}),
+    url: `/p/${p.id}`,
+  };
 }
 
 export async function resolveSiteDataById(businessId: string, opts: SiteQueryOpts = {}): Promise<SiteData | null> {
@@ -84,20 +115,20 @@ export async function resolveSiteDataById(businessId: string, opts: SiteQueryOpt
   if (!business) return null;
 
   const cat = typeof opts.category === "string" && opts.category.trim() ? opts.category.trim().slice(0, 60) : null;
+  const whatsapp = digitsOrNull(business.whatsappNumber);
+  const config = parseSiteConfig(business.siteConfig, business.primaryColor);
 
   const pageSize = PAGE_SIZE_PRODUCTS;
-  const start = (clampInt(opts.page, 1, 1_000_000, 1) - 1) * pageSize; // refined below once total is known
+  const start = (clampInt(opts.page, 1, 1_000_000, 1) - 1) * pageSize;
 
-  // Content rows: explicit selects, business-scoped, stable ordering.
   const [productCount, productRows, serviceRows, galleryRows, testimonialRows, catRows] = await Promise.all([
     prisma.product.count({ where: { businessId, ...(cat ? { category: cat } : {}) } }),
     prisma.product.findMany({
       where: { businessId, ...(cat ? { category: cat } : {}) },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-      // the grid page only — one big catalog never all rides one render
       skip: start,
       take: pageSize,
-      select: { id: true, name: true, description: true, priceKobo: true, category: true, inStock: true, imageUrls: true },
+      select: productSelect,
     }),
     prisma.service.findMany({
       where: { businessId },
@@ -114,41 +145,26 @@ export async function resolveSiteDataById(businessId: string, opts: SiteQueryOpt
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       select: { id: true, authorName: true, quote: true },
     }),
-    // Categories from the WHOLE catalog (chips never disappear mid-pagination).
     prisma.product.findMany({ where: { businessId }, select: { category: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
   ]);
 
-  // Grid pagination is server-side by construction: a 300-product owner
-  // cannot make every page view heavy (one big catalog is 24 at a time).
-  // Clamp out-of-range pages to the last one and RE-SLICE in memory (the
-  // fetch above used the requested offset — at MAX_PRODUCTS a full list is
-  // bounded, so clamping by slice costs nothing and never 302s a bookmark).
+  // server-side pagination clamp: out-of-range pages re-fetch at the last
+  // real page (never 302, never mis-slice) — Phase 2.5 behavior, kept.
   const totalPages = Math.max(1, Math.ceil(productCount / pageSize));
   const page = clampInt(opts.page, 1, totalPages, 1);
   const clampedStart = (page - 1) * pageSize;
-
-  const windowRows: { id: string; name: string; description: string | null; priceKobo: number | null; category: string | null; inStock: boolean; imageUrls: string[] }[] =
+  const windowRows: ProductRow[] =
     clampedStart === start
-      ? (productRows as never)
-      : (
-          await prisma.product.findMany({
-            where: { businessId, ...(cat ? { category: cat } : {}) },
-            orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-            skip: clampedStart,
-            take: pageSize,
-            select: { id: true, name: true, description: true, priceKobo: true, category: true, inStock: true, imageUrls: true },
-          })
-        );
+      ? (productRows as ProductRow[])
+      : ((await prisma.product.findMany({
+          where: { businessId, ...(cat ? { category: cat } : {}) },
+          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+          skip: clampedStart,
+          take: pageSize,
+          select: productSelect,
+        })) as ProductRow[]);
 
-  const products: SiteProduct[] = (windowRows as { id: string; name: string; description: string | null; priceKobo: number | null; category: string | null; inStock: boolean; imageUrls: string[] }[]).map((p) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description,
-    priceKobo: typeof p.priceKobo === "number" && p.priceKobo >= 0 ? Math.floor(p.priceKobo) : null,
-    category: p.category,
-    inStock: p.inStock !== false,
-    imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls.filter(isOurBlobUrl).slice(0, MAX_IMAGES_PER_PRODUCT) : [],
-  }));
+  const products = windowRows.map((p) => mapProduct(p, business.name, whatsapp));
 
   const categories: string[] = [];
   const seen = new Set<string>();
@@ -159,51 +175,97 @@ export async function resolveSiteDataById(businessId: string, opts: SiteQueryOpt
     }
   }
 
-  const pagination: SitePagination | null =
-    productCount > 0 ? { page, pageSize, totalItems: productCount, totalPages } : null;
+  const pageLink = (n: number) => {
+    const params = new URLSearchParams();
+    if (n > 1) params.set("page", String(n));
+    if (cat) params.set("category", cat);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "./";
+  };
 
-  return {
-    themeKey: business.theme?.slug ?? "minimal",
+  const hours = formatHours(parseOpeningHours(business.openingHours));
+
+  const meta = {
+    title: business.name.slice(0, 120),
+    ...(business.description ? { description: business.description.slice(0, 300) } : {}),
+    ...(opts.host ? { canonicalUrl: `https://${opts.host}/` } : {}),
+    ...(isOurBlobUrl(business.logoUrl) ? { ogImageUrl: business.logoUrl } : {}),
+  };
+
+  return siteDataSchema.parse({
     business: {
       name: business.name,
-      description: business.description,
-      logoUrl: isOurBlobUrl(business.logoUrl) ? business.logoUrl : null,
-      contactEmail: business.contactEmail,
-      contactPhone: business.contactPhone,
-      address: business.address,
-      whatsappDigits: typeof business.whatsappNumber === "string" && /^[1-9]\d{7,14}$/.test(business.whatsappNumber) ? business.whatsappNumber : null,
-      instagramUrl: revalidateSocial("instagram", business.instagramUrl),
-      facebookUrl: revalidateSocial("facebook", business.facebookUrl),
-      tiktokUrl: revalidateSocial("tiktok", business.tiktokUrl),
-      mapsUrl: typeof business.mapsUrl === "string" && /^https:\/\/\S+$/.test(business.mapsUrl) ? business.mapsUrl : null,
-      openingHours: parseOpeningHours(business.openingHours),
+      ...(business.description ? { tagline: undefined, description: business.description.slice(0, 2000) } : {}),
+      ...(isOurBlobUrl(business.logoUrl) ? { logoUrl: business.logoUrl } : {}),
+      ...(business.contactEmail ? { contactEmail: business.contactEmail } : {}),
+      ...(business.contactPhone ? { contactPhone: business.contactPhone } : {}),
+      ...(business.address ? { address: business.address } : {}),
+      ...(buildWaLink(whatsapp, `Hi ${business.name}, I found your site on Agora`) ? { whatsappUrl: buildWaLink(whatsapp, `Hi ${business.name}, I found your site on Agora`) } : {}),
+      ...(revalidateSocial("instagram", business.instagramUrl) ? { instagramUrl: revalidateSocial("instagram", business.instagramUrl) } : {}),
+      ...(revalidateSocial("facebook", business.facebookUrl) ? { facebookUrl: revalidateSocial("facebook", business.facebookUrl) } : {}),
+      ...(revalidateSocial("tiktok", business.tiktokUrl) ? { tiktokUrl: revalidateSocial("tiktok", business.tiktokUrl) } : {}),
+      ...(business.mapsUrl && /^https:\/\/\S+$/.test(business.mapsUrl) ? { mapsUrl: business.mapsUrl } : {}),
     },
-    config: parseSiteConfig(business.siteConfig, business.primaryColor),
+    meta,
+    hours,
+    sections: config.sections,
     products,
-    categories,
-    activeCategory: cat,
-    services: (serviceRows as { id: string; name: string; description: string | null; priceKobo: number | null; priceLabel: string | null }[]).map((s) => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      priceKobo: typeof s.priceKobo === "number" && s.priceKobo >= 0 ? Math.floor(s.priceKobo) : null,
-      priceLabel: s.priceLabel,
-    })),
-    gallery: (galleryRows as { id: string; url: string; caption: string | null }[]).map((g) => ({
-      id: g.id,
-      url: g.url,
-      caption: g.caption,
-    })).filter((g): g is SiteGalleryImage => isOurBlobUrl(g.url)),
+    services: (serviceRows as { id: string; name: string; description: string | null; priceKobo: number | null; priceLabel: string | null }[]).map((s) => {
+      const price = typeof s.priceKobo === "number" && s.priceKobo >= 0 ? s.priceKobo : null;
+      const wa = buildWaLink(whatsapp, `Hi ${business.name}, I'd like to book: ${s.name}`);
+      return {
+        id: s.id,
+        name: s.name,
+        ...(s.description ? { description: s.description } : {}),
+        ...(price !== null ? { priceKobo: price, price: formatKobo(price, s.priceLabel) } : {}),
+        ...(s.priceLabel ? { priceLabel: s.priceLabel } : {}),
+        ...(wa ? { waLink: wa } : {}),
+      };
+    }),
+    gallery: (galleryRows as { id: string; url: string; caption: string | null }[])
+      .filter((g) => isOurBlobUrl(g.url))
+      .map((g, i) => ({
+        id: g.id,
+        url: g.url,
+        alt: (g.caption ?? `${business.name} photo ${i + 1}`).slice(0, 160),
+        ...(g.caption ? { caption: g.caption } : {}),
+      })),
     testimonials: (testimonialRows as { id: string; authorName: string; quote: string }[]).map((t) => ({
       id: t.id,
       authorName: t.authorName,
       quote: t.quote,
     })),
-    pagination,
-  };
+    settings: {
+      primary_color: config.primaryColor,
+      font_pair: config.fontPairKey,
+      ...(config.themeSettings ?? {}),
+    },
+    pagination: {
+      page,
+      pageSize,
+      total: productCount,
+      pages: totalPages,
+      ...(page > 1 ? { prevHref: pageLink(page - 1) } : {}),
+      ...(page < totalPages ? { nextHref: pageLink(page + 1) } : {}),
+    },
+    filters: {
+      categories,
+      ...(cat ? { active: cat } : {}),
+    },
+  });
 }
 
-/** SEO metadata inputs (title/description/og) — minimal extra query. */
+/** Product detail lookup (id may sit OUTSIDE the current listing page). */
+export async function resolveSiteProduct(businessId: string, productId: string) {
+  const [p, business] = await Promise.all([
+    prisma.product.findFirst({ where: { id: productId, businessId }, select: productSelect }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { name: true, whatsappNumber: true } }),
+  ]);
+  if (!p || !business) return null;
+  return mapProduct(p as ProductRow, business.name, digitsOrNull(business.whatsappNumber as string | null));
+}
+
+/** SEO metadata inputs for redirects/canonical checks — minimal extra query. */
 export async function loadSiteMeta(businessId: string) {
   const b = (await prisma.business.findUnique({
     where: { id: businessId },

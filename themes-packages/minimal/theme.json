@@ -1,0 +1,13 @@
+{
+  "apiVersion": 1,
+  "id": "minimal",
+  "name": "Minimal",
+  "version": "1.0.0",
+  "description": "One clean page: your name, your story, and one big button to reach you. The fastest site on Agora — under 20KB on first paint.",
+  "categories": ["any", "starter"],
+  "supportedSections": ["hero", "about", "contact"],
+  "pluginSlots": [],
+  "settings": {
+    "primary_color": { "type": "color", "default": "#14261d", "label": "Accent colour" }
+  }
+}

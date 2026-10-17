@@ -1,0 +1,12 @@
+<section class="band contact">
+  <h2>Find us</h2>
+  <ul class="links">
+    {%- if business.address %}<li class="c-addr">{{ business.address }}{%- if business.mapsUrl %} · <a href="{{ business.mapsUrl }}">Map</a>{% endif %}</li>{% endif -%}
+    {%- if business.contactPhone %}<li><a href="tel:{{ business.contactPhone }}">{{ business.contactPhone }}</a></li>{% endif -%}
+    {%- if business.contactEmail %}<li><a href="mailto:{{ business.contactEmail }}">{{ business.contactEmail }}</a></li>{% endif -%}
+    {%- if business.whatsappUrl %}<li><a href="{{ business.whatsappUrl }}">WhatsApp</a></li>{% endif -%}
+    {%- if business.instagramUrl %}<li><a href="{{ business.instagramUrl }}">Instagram</a></li>{% endif -%}
+    {%- if business.facebookUrl %}<li><a href="{{ business.facebookUrl }}">Facebook</a></li>{% endif -%}
+    {%- if business.tiktokUrl %}<li><a href="{{ business.tiktokUrl }}">TikTok</a></li>{% endif -%}
+  </ul>
+</section>

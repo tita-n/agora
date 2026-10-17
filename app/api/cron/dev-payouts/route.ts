@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       id: true,
       kind: true,
       baseKobo: true,
-      business: { select: { theme: { select: { devId: true, price: true } } } },
+      business: { select: { theme: { select: { developerId: true, price: true } } } },
     },
   });
 
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   const byDev = new Map<string, number>();
   let skippedNoBase = 0;
   for (const p of payments) {
-    const devId = p.business?.theme?.devId;
+    const devId = p.business?.theme?.developerId; // DeveloperProfile id (Phase 0 ledger key)
     if (!devId) continue; // theme unpublished/deleted — operator review case
     if (p.baseKobo == null) {
       skippedNoBase++;

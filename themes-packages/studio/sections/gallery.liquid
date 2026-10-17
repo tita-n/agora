@@ -1,0 +1,9 @@
+{%- if section.gallery.size > 0 -%}
+<section class="band"><h2>Recent work</h2>
+  <ul class="g">
+    {%- for img in section.gallery -%}
+    <li><img src="{{ img.url | image_url }}" alt="{{ img.alt }}" loading="lazy" width="600" height="750" />{%- if img.caption %}<span>{{ img.caption }}</span>{% endif %}</li>
+    {%- endfor -%}
+  </ul>
+</section>
+{%- endif -%}

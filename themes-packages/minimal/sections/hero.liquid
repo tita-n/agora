@@ -1,0 +1,6 @@
+<section class="hero">
+  {%- if business.logoUrl %}<img class="logo" src="{{ business.logoUrl | image_url }}" alt="" width="88" height="88" />{% endif -%}
+  <h1>{{ business.name }}</h1>
+  {%- if business.tagline %}<p class="tag">{{ business.tagline }}</p>{% endif -%}
+  {%- if business.whatsappUrl %}<a class="btn" href="{{ business.whatsappUrl }}">Message {{ business.name }}</a>{% endif -%}
+</section>

@@ -24,18 +24,6 @@
   }
 }
 
-/*
- * Legacy tenant-site rules kept ONLY while the Phase 2.5 React themes still
- * exist; the Liquid packages (docs/TEMPLATE_SPEC.md) ship their own CSS and
- * this block is deleted with themes/ in the template-engine step.
- */
-.site :focus-visible {
-  outline: 3px solid var(--ap-focus, #2563eb);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-.site img { min-height: 1px; }
-
 /* CSS-only disclosure (mobile nav drawer): no client JS ships for it. */
 details > summary { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }

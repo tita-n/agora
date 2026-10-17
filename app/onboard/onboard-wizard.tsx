@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { uploadLogo } from "@/lib/blob-client";
-import { THEMES, THEME_CATALOG } from "@/themes/registry";
-import { defaultSiteConfig } from "@/lib/site-config";
-import type { SiteData } from "@/lib/site-data";
+
 import { WEEKDAYS, type Weekday } from "@/lib/opening-hours";
 import { formatNaira } from "@/lib/money";
 import type { PaymentInstructions } from "@/lib/payments/types";
@@ -91,37 +89,68 @@ function hoursPayload(hours: HoursForm) {
   return anyOpen ? out : undefined;
 }
 
-/** Minimal-safe primary color for previews (mirrors MinimalSite's fallback). */
-const safeHex = (v: string) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : "#111827");
+/**
+ * Step 4 — the live draft preview. The engine renders the draft server-side
+ * (POST /api/templates/draft-preview returns the exact HTML the tenant route
+ * would emit for this data); the iframe is `sandbox="allow-scripts"` only, so
+ * it runs on an opaque origin: no cookies, no storage, no same-origin reads.
+ */
+function DraftPreview({ draft }: { draft: Draft }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/templates/draft-preview", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            themeSlug: draft.themeSlug,
+            name: draft.name,
+            description: draft.description,
+            primaryColor: draft.primaryColor,
+            subdomain: draft.subdomain,
+          }),
+        });
+        const text = await res.text();
+        if (!live) return;
+        if (!res.ok) {
+          setError("The preview engine is unavailable right now — pick a theme and continue, we render again the moment it is back.");
+          setHtml(null);
+        } else {
+          setError(null);
+          setHtml(text);
+        }
+      } catch {
+        if (live) setError("The preview engine is unavailable right now — you can still continue.");
+      }
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [draft.themeSlug, draft.name, draft.description, draft.primaryColor, draft.subdomain]);
 
-function draftToSiteData(draft: Draft): SiteData {
-  return {
-    themeKey: draft.themeSlug,
-    business: {
-      name: draft.name || "Your Business",
-      description: draft.description || null,
-      logoUrl: draft.logoUrl || null,
-      contactEmail: draft.contactEmail || null,
-      contactPhone: draft.contactPhone || null,
-      address: draft.address || null,
-      whatsappDigits: /^[1-9]\d{7,14}$/.test(draft.whatsappNumber.replace(/\D/g, ""))
-        ? draft.whatsappNumber.replace(/\D/g, "")
-        : null,
-      instagramUrl: draft.instagramUrl || null,
-      facebookUrl: draft.facebookUrl || null,
-      tiktokUrl: draft.tiktokUrl || null,
-      mapsUrl: draft.mapsUrl || null,
-      openingHours: null, // rendered live below instead — preview shows the SHAPE
-    },
-    config: defaultSiteConfig(safeHex(draft.primaryColor)),
-    products: [],
-    categories: [],
-    activeCategory: null,
-    services: [],
-    gallery: [],
-    testimonials: [],
-    pagination: null,
-  };
+  if (error) {
+    return <p className="mt-4 rounded-md border border-rule bg-paper p-4 text-sm text-ink-muted">{error}</p>;
+  }
+  return (
+    <div className="mt-4 h-[560px] overflow-hidden rounded-md border border-rule bg-white">
+      {html === null ? (
+        <div className="flex h-full items-center justify-center text-sm text-ink-muted" role="status">
+          Rendering your preview…
+        </div>
+      ) : (
+        <iframe title="Live template preview" srcDoc={html} sandbox="allow-scripts" className="h-full w-full border-0" />
+      )}
+    </div>
+  );
+}
+
+/** Minimal-safe primary color for the color swatch UI. */
+function safeHex(v: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#111827";
 }
 
 type SubdomainCheck =
@@ -251,7 +280,6 @@ export function OnboardWizard({
 
   const totalKobo = selectedTheme.priceKobo + hostingFeeKobo;
   const canLeaveStep1 = check.state === "ok";
-  const PreviewTheme = THEMES[draft.themeSlug] ?? THEMES.minimal;
 
   return (
     <main className="min-h-screen bg-paper px-4 py-12">
@@ -512,7 +540,6 @@ export function OnboardWizard({
               </p>
               <div role="radiogroup" aria-label="Theme" className="mt-4 space-y-3">
                 {themes.map((theme) => {
-                  const meta = THEME_CATALOG.find((c) => c.key === theme.slug);
                   const active = draft.themeSlug === theme.slug;
                   return (
                     <button
@@ -522,21 +549,21 @@ export function OnboardWizard({
                       aria-checked={active}
                       onClick={() => set("themeSlug", theme.slug)}
                       className={`block w-full rounded-md border p-4 text-left transition ${
-                        active ? "border-ink bg-paper shadow-sm" : "border-rule hover:border-gray-400"
+                        active ? "border-ink bg-paper shadow-sm" : "border-rule hover:border-ink-faint"
                       }`}
                     >
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="font-semibold text-ink">{theme.name}</span>
                         <span className="text-sm text-ink-muted">{formatNaira(theme.priceKobo)}/mo</span>
                       </div>
-                      {meta && <p className="mt-1 text-xs text-ink-muted">{meta.forWho}</p>}
+                      {theme.description && <p className="mt-1 text-xs text-ink-muted">{theme.description}</p>}
                       <p className="mt-2 text-xs">
                         <a
-                          href={`/preview/${theme.slug}`}
+                          href={`/t/${theme.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="font-medium text-sky-700 underline"
+                          className="font-medium text-brass underline"
                         >
                           See a full example site ↗
                         </a>
@@ -562,24 +589,14 @@ export function OnboardWizard({
             <section>
               <h1 className="text-xl font-bold text-ink">Live preview</h1>
               <p className="mt-1 text-sm text-ink-muted">
-                This is exactly what visitors at{" "}
+                This is your <span className="font-medium">real template</span> rendering
+                your details — the exact engine that will serve{" "}
                 <span className="font-mono">
                   {draft.subdomain || "yours"}.{rootDomain}
                 </span>{" "}
-                will see — your real theme, your real data. (Links are idle
-                in preview; your site has no address until payment.)
+                after payment. Links stay inert until your site exists.
               </p>
-              <div
-                className="mt-4 max-h-[70vh] overflow-y-auto rounded-md border border-rule"
-                onClickCapture={(e) => {
-                  // Inert preview: any click on a link inside the render is
-                  // swallowed (draft content has no home to navigate to yet).
-                  const target = (e.target as HTMLElement).closest("a");
-                  if (target) e.preventDefault();
-                }}
-              >
-                <PreviewTheme.Site data={draftToSiteData(draft)} agoraHref="/" />
-              </div>
+              <DraftPreview draft={draft} />
               <div className="mt-6 flex justify-between">
                 <BackButton onClick={() => setStep(3)} />
                 <NextButton onClick={() => setStep(5)} label="Continue to payment" />
@@ -591,7 +608,7 @@ export function OnboardWizard({
             <section>
               {acknowledged ? (
                 <>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-2xl">✓</div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brass-tint text-2xl text-brass-dark">✓</div>
                   <h1 className="mt-4 text-xl font-bold text-ink">Thanks — we&apos;ll verify shortly</h1>
                   <p className="mt-2 text-sm text-ink-muted">
                     Transfers are checked and activated manually, usually the

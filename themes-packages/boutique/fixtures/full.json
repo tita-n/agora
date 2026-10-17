@@ -1,0 +1,52 @@
+{
+  "business": {
+    "name": "Àṣọ Atelier",
+    "description": "Hand-dyed fabrics and made-to-order pieces in Yaba. Style that fits, not just size. Every order starts with a measurement chat on WhatsApp.",
+    "contactEmail": "hello@asosatelier.example",
+    "contactPhone": "+234 801 234 5678",
+    "address": "12 Herbert Macaulay Way, Yaba, Lagos",
+    "whatsappUrl": "https://wa.me/2348012345678?text=Hi%20%C3%80%E1%B9%A3%E1%BB%8D%20Atelier%2C%20I%20found%20your%20site%20on%20Agora",
+    "instagramUrl": "https://instagram.com/asosatelier"
+  },
+  "meta": {
+    "title": "Àṣọ Atelier",
+    "description": "Hand-dyed fabrics and made-to-order pieces in Yaba."
+  },
+  "hours": [
+    { "day": "Monday", "closed": false, "open": "09:00", "close": "21:00" },
+    { "day": "Tuesday", "closed": false, "open": "09:00", "close": "21:00" },
+    { "day": "Wednesday", "closed": false, "open": "09:00", "close": "21:00" },
+    { "day": "Thursday", "closed": false, "open": "09:00", "close": "21:00" },
+    { "day": "Friday", "closed": false, "open": "09:00", "close": "23:30" },
+    { "day": "Saturday", "closed": false, "open": "09:00", "close": "23:30" },
+    { "day": "Sunday", "closed": true }
+  ],
+  "sections": [
+    { "type": "hero", "enabled": true },
+    { "type": "about", "enabled": true },
+    { "type": "products", "enabled": true },
+    { "type": "testimonials", "enabled": true },
+    { "type": "hours", "enabled": true },
+    { "type": "contact", "enabled": true }
+  ],
+  "products": [
+    { "id": "p-anara", "name": "Anara Ankara Two-Piece", "description": "Hand-dyed ankara, cut to order in three lengths. Matches set includes head wrap.", "priceKobo": 4250000, "price": "₦42,500", "category": "Ready-to-wear", "inStock": true, "imageUrls": ["sample-a.svg", "sample-c.svg"], "waLink": "https://wa.me/2348012345678?text=Hi%20I%27d%20like%20to%20order%3A%20Anara%20Ankara%20Two-Piece", "url": "/p/p-anara" },
+    { "id": "p-adire", "name": "Àdìré Linen Shirt", "description": "Natural-dyed linen with hand-painted resist pattern.", "priceKobo": 2800000, "price": "₦28,000", "category": "Ready-to-wear", "inStock": true, "imageUrls": ["sample-b.svg"], "url": "/p/p-adire" },
+    { "id": "p-agbada", "name": "Embroidered Agbada Set", "description": "Three-piece agbada in cotton damask, silver thread embroidery.", "priceKobo": 9800000, "price": "₦98,000", "category": "Occasion", "inStock": true, "imageUrls": ["sample-f.svg", "sample-d.svg"], "url": "/p/p-agbada" },
+    { "id": "p-wrapper", "name": "Cotton Wrapper (2 yards)", "description": "Everyday wax-print cotton. Pre-washed.", "priceKobo": 1200000, "price": "₦12,000", "category": "Fabrics", "inStock": true, "imageUrls": ["sample-e.svg"], "url": "/p/p-wrapper" },
+    { "id": "p-silk", "name": "Silk Head Wrap", "description": "Mulberry silk, hand-rolled hem.", "priceKobo": 950000, "price": "₦9,500", "category": "Accessories", "inStock": false, "imageUrls": ["sample-c.svg"], "url": "/p/p-silk" },
+    { "id": "p-kaftan", "name": "Travel Kaftan", "description": "Wrinkle-resistant crepe, packed pocket. One size.", "priceKobo": 3300000, "price": "₦33,000", "category": "Ready-to-wear", "inStock": true, "imageUrls": ["sample-d.svg", "sample-a.svg", "sample-b.svg"], "url": "/p/p-kaftan" },
+    { "id": "p-lace", "name": "French Lace (per 5 yards)", "description": "Corded French lace for special orders.", "category": "Fabrics", "inStock": true, "imageUrls": ["sample-a.svg"], "url": "/p/p-lace" },
+    { "id": "p-gown", "name": "Aso-oke Pencil Gown", "description": "Made to measure, 4–6 weeks.", "priceKobo": 150000000, "price": "₦1,500,000", "category": "Occasion", "inStock": true, "imageUrls": ["sample-f.svg"], "url": "/p/p-gown" }
+  ],
+  "services": [],
+  "gallery": [],
+  "testimonials": [
+    { "id": "t1", "authorName": "Amaka O.", "quote": "The fit was perfect the first time. I ordered two more colours the same week." },
+    { "id": "t2", "authorName": "Tunde A.", "quote": "Ordered for my sister's wedding — arrived a full week early, beautifully wrapped." },
+    { "id": "t3", "authorName": "Zainab K.", "quote": "They actually answered on WhatsApp at 9pm and fixed my measurement by video call. Unreal." }
+  ],
+  "settings": { "primary_color": "#115e4a", "font_pair": "editorial", "show_out_of_stock": true },
+  "pagination": { "page": 1, "pageSize": 24, "total": 8, "pages": 1 },
+  "filters": { "categories": ["Ready-to-wear", "Occasion", "Fabrics", "Accessories"] }
+}

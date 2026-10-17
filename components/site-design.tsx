@@ -21,7 +21,7 @@ const SECTION_LABELS: Record<SectionType, string> = {
   contact: "Contact & links",
 };
 
-export function SiteDesign({ config, siteUrl, themeLabel }: { config: SiteConfig; siteUrl: string; themeLabel: string }) {
+export function SiteDesign({ config, siteUrl, themeLabel, themeSlug }: { config: SiteConfig; siteUrl: string; themeLabel: string; themeSlug: string }) {
   const router = useRouter();
   const [sections, setSections] = useState(config.sections);
   const [primaryColor, setPrimaryColor] = useState(config.primaryColor);
@@ -148,7 +148,7 @@ export function SiteDesign({ config, siteUrl, themeLabel }: { config: SiteConfig
       )}
 
       <aside className="rounded-md border border-warn/40 bg-warn/10 p-4 text-xs leading-relaxed text-warn">
-        <p className="font-semibold">You&apos;re on the “{themeLabel}” theme.</p>
+        <p className="font-semibold">You&apos;re on the “{themeLabel}” theme. <a href={`/t/${themeSlug}`} target="_blank" rel="noopener noreferrer" className="font-normal text-brass underline">See the full example site ↗</a></p>
         <p className="mt-1">
           Theme switching after signup isn&apos;t offered yet — a theme change moves your price, your payment
           schedule and the developer payout, so it&apos;s its own upcoming piece of work. Design choices above apply to

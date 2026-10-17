@@ -20,14 +20,14 @@ export default async function DesignPage() {
       subdomain: true,
       siteConfig: true,
       primaryColor: true,
-      theme: { select: { name: true } },
+      theme: { select: { name: true, slug: true } },
     },
   })) as {
     id: string;
     subdomain: string;
     siteConfig: unknown;
     primaryColor: string | null;
-    theme: { name: string } | null;
+    theme: { name: string; slug: string } | null;
   } | null;
   if (!business) redirect("/dashboard");
 
@@ -44,6 +44,7 @@ export default async function DesignPage() {
             config={config}
             siteUrl={tenantSiteUrl(business.subdomain)}
             themeLabel={business.theme?.name ?? "Minimal"}
+            themeSlug={business.theme?.slug ?? "minimal"}
           />
         </div>
       </AppShell>

@@ -1,0 +1,46 @@
+{
+  "business": {
+    "name": "Lumen Studio",
+    "description": "Braids, locs and bridal hair by appointment — plus a quiet corner for lashes. Two chairs, zero rush, children welcome.",
+    "contactPhone": "+234 702 444 8811",
+    "contactEmail": "book@lumenstudio.example",
+    "address": "2b Adeola Odeku, Victoria Island, Lagos",
+    "whatsappUrl": "https://wa.me/2347024448811?text=Hi%20Lumen%20Studio%2C%20I%27d%20like%20to%20book",
+    "instagramUrl": "https://instagram.com/lumenstudio"
+  },
+  "meta": { "title": "Lumen Studio", "description": "Braids, locs and bridal hair by appointment in VI, Lagos." },
+  "hours": [
+    { "day": "Tuesday", "closed": false, "open": "10:00", "close": "19:00" },
+    { "day": "Wednesday", "closed": false, "open": "10:00", "close": "19:00" },
+    { "day": "Thursday", "closed": false, "open": "10:00", "close": "19:00" },
+    { "day": "Friday", "closed": false, "open": "09:00", "close": "20:00" },
+    { "day": "Saturday", "closed": false, "open": "08:00", "close": "20:00" },
+    { "day": "Sunday", "closed": true }
+  ],
+  "sections": [
+    { "type": "hero", "enabled": true },
+    { "type": "services", "enabled": true },
+    { "type": "gallery", "enabled": true },
+    { "type": "testimonials", "enabled": true },
+    { "type": "hours", "enabled": true },
+    { "type": "contact", "enabled": true }
+  ],
+  "services": [
+    { "id": "s-braids", "name": "Knotless braids (mid)", "description": "Shoulder length, two sessions if dense.", "priceKobo": 3500000, "price": "₦35,000", "waLink": "https://wa.me/2347024448811?text=Hi%20Lumen%2C%20book%3A%20Knotless%20braids" },
+    { "id": "s-locs", "name": "Loc retwist + wrap", "priceKobo": 2000000, "price": "₦20,000", "waLink": "https://wa.me/2347024448811?text=Hi%20Lumen%2C%20book%3A%20Loc%20retwist" },
+    { "id": "s-bridal", "name": "Bridal trial", "description": "Two hours, mood-board first, includes pins.", "priceKobo": 8000000, "price": "₦80,000", "waLink": "https://wa.me/2347024448811?text=Hi%20Lumen%2C%20book%3A%20Bridal%20trial" },
+    { "id": "s-lashes", "name": "Hybrid lash set", "priceKobo": 2500000, "price": "₦25,000" }
+  ],
+  "gallery": [
+    { "id": "g1", "url": "sample-c.svg", "alt": "Fresh knotless braids", "caption": "Knotless, two sessions" },
+    { "id": "g2", "url": "sample-d.svg", "alt": "Bridal updo with pins", "caption": "Bridal trial week" },
+    { "id": "g3", "url": "sample-e.svg", "alt": "Loc styles" }
+  ],
+  "testimonials": [
+    { "id": "t1", "authorName": "Rita", "quote": "Held to the exact time, and the braids lasted five weeks without a single tight day." },
+    { "id": "t2", "authorName": "Kemi", "quote": "They pinned my trial twice until it matched the photo I brought. I cried. Happy tears." }
+  ],
+  "settings": { "primary_color": "#8a5a83", "font_pair": "editorial", "booking_note": "By appointment — 24h notice keeps your slot free." },
+  "pagination": { "page": 1, "pageSize": 24, "total": 0, "pages": 1 },
+  "filters": { "categories": [] }
+}

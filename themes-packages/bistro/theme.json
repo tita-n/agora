@@ -1,0 +1,14 @@
+{
+  "apiVersion": 1,
+  "id": "bistro",
+  "name": "Late Night Bistro",
+  "version": "1.0.0",
+  "description": "A menu-first page for kitchens: warm dark palette, prices in a glance, tonight's hours up top, and one tap to call or WhatsApp a booking.",
+  "categories": ["food", "restaurant", "bar"],
+  "supportedSections": ["hero", "about", "products", "testimonials", "hours", "contact"],
+  "pluginSlots": [],
+  "settings": {
+    "primary_color": { "type": "color", "default": "#e0b45c", "label": "Accent colour" },
+    "font_pair": { "type": "select", "default": "editorial", "options": ["clean", "editorial"], "label": "Fonts" }
+  }
+}

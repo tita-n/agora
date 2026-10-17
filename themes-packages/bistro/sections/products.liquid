@@ -1,0 +1,32 @@
+<section class="band menu" id="menu">
+  <h2>Tonight&rsquo;s menu</h2>
+  {%- if filters.categories.size > 1 -%}
+  <nav class="chips" aria-label="Menu sections">
+    <a class="chip{% unless filters.active %} on{% endunless %}" href="?">All</a>
+    {%- for c in filters.categories -%}
+    <a class="chip{% if filters.active == c %} on{% endif %}" href="?category={{ c | url_encode }}">{{ c }}</a>
+    {%- endfor -%}
+  </nav>
+  {%- endif -%}
+  {%- if section.products.size == 0 -%}
+  <p class="empty">Menu being rewritten — back tonight.</p>
+  {%- else -%}
+  <ul class="m">
+    {%- for p in section.products -%}
+    <li{% unless p.inStock %} class="gone"{% endunless %}>
+      <span class="m-name">{{ p.name }}{%- unless p.inStock %} <em>86&rsquo;d</em>{% endunless -%}</span>
+      <span class="m-dot"></span>
+      <span class="m-price">{% if p.price %}{{ p.price }}{% else %}ask{% endif %}</span>
+      {%- if p.description %}<span class="m-desc">{{ p.description }}</span>{% endif -%}
+    </li>
+    {%- endfor -%}
+  </ul>
+  {%- if pagination.pages > 1 -%}
+  <nav class="pager">
+    {%- if pagination.prevHref %}<a href="{{ pagination.prevHref }}">&larr;</a>{% endif -%}
+    <span>{{ pagination.page }}/{{ pagination.pages }}</span>
+    {%- if pagination.nextHref %}<a href="{{ pagination.nextHref }}">&rarr;</a>{% endif -%}
+  </nav>
+  {%- endif -%}
+  {%- endif -%}
+</section>

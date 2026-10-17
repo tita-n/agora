@@ -1,0 +1,9 @@
+{%- if section.testimonials.size > 0 -%}
+<section class="band"><h2>Regulars say</h2>
+  <ul class="q">
+    {%- for t in section.testimonials -%}
+    <li><blockquote>{{ t.quote }}</blockquote><cite>— {{ t.authorName }}</cite></li>
+    {%- endfor -%}
+  </ul>
+</section>
+{%- endif -%}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ business.name }}</title>
+    {%- if meta.description %}<meta name="description" content="{{ meta.description }}" />{% endif %}
+    {%- if meta.canonicalUrl %}<link rel="canonical" href="{{ meta.canonicalUrl }}" />{% endif %}
+    <link rel="stylesheet" href="{{ 'theme.css' | asset_url }}" />
+  </head>
+  <body class="pair-{{ settings.font_pair }}" style="--primary: {{ settings.primary_color }}">
+    <main class="site">
+      {%- for s in sections -%}{%- render s.type, section: s -%}{%- endfor -%}
+    </main>
+    <footer class="foot">{{ business.name }} · <a href="{{ agora.href }}">Agora</a>{{ 'footer-strip' | slot }}</footer>
+    {{ 'floating-widget' | slot }}
+  </body>
+</html>
