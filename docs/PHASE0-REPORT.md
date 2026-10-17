@@ -54,8 +54,8 @@ Date: 2026-10-17 · Branch `arena/01a0934c-agora` · Head after Phase 0: see `gi
      by design, Phase 0 ships the seam only.
    * The old React themes (`themes/`, `app/preview`, preview-fixtures, the
      `.site` globals shim) are DELETED — one render path, no drift.
-7. **Verification** — `npm run verify` chains every suite: phase2 58
-   (auth 19 + ops 39), phase25 97, engine 82 (escape attempts, prototype access,
+7. **Verification** — `npm run verify` chains every suite: auth 19 + ops 30 +
+   phase2 58 + phase25 97 + engine 82 (escape attempts, prototype access,
    runaway loops, map containment, filter posture, planted-bad-package
    blocking, full+empty renders for all 4 packages, manifest↔key parity) +
    `theme:validate` on all packages. All green in-sandbox (286 assertions).
