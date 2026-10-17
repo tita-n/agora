@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { draftSchema } from "@/lib/onboarding";
@@ -70,7 +71,11 @@ export async function PATCH(req: NextRequest) {
       facebookUrl: d.facebookUrl ?? null,
       tiktokUrl: d.tiktokUrl ?? null,
       mapsUrl: d.mapsUrl ?? null,
-      openingHours: d.openingHours ?? null,
+      // openingHours is a nullable Json column: Prisma rejects JS `null`
+      // there (only the stubbed any-client would take it) — clearing goes
+      // through Prisma.DbNull (SQL NULL, which the defensive read treats as
+      // "no hours"), identical semantics to `null` on the string columns.
+      openingHours: d.openingHours ?? Prisma.DbNull,
     },
   });
   return NextResponse.json({ ok: true });

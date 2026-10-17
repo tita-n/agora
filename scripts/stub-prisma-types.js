@@ -26,9 +26,15 @@ export declare class PrismaClient {
 }
 export declare namespace Prisma {
   type InputJsonValue = any;
+  type InputJsonObject = any;
+  type InputJsonArray = any;
+  type NullableJsonNullValueInput = any;
   type JsonValue = any;
   type JsonObject = any;
   type PrismaClientOptions = any;
+  const DbNull: any;
+  const JsonNull: any;
+  const AnyNull: any;
 }
 export default PrismaClient;
 `
@@ -63,7 +69,12 @@ class PrismaClient {
   $queryRawUnsafe() { return Promise.resolve([]); }
   $executeRaw() { return Promise.resolve(0); }
 }
-module.exports = { PrismaClient, Prisma: {}, default: PrismaClient };
+module.exports = {
+  PrismaClient,
+  // sentinel values mirroring the real enums — irrelevant at runtime here (no query ever runs)
+  Prisma: { DbNull: { toJSON: () => null }, JsonNull: { toJSON: () => null }, AnyNull: { toJSON: () => null } },
+  default: PrismaClient,
+};
 `
 );
 // The package's "." export resolves via default.d.ts / default.js (see its
