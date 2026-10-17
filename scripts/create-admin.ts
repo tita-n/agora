@@ -81,11 +81,13 @@ try {
       data: { password: hash, isStaff: true, emailVerifiedAt: new Date() },
     });
     console.log(
-      `${existing.role === "admin" ? "password reset for" : "role changed to admin for"} ${parsedEmail} @ ${describeDbTarget(target)}`
+      `${existing.isStaff ? "password reset for" : "promoted to staff (and password reset) for"} ${parsedEmail} @ ${describeDbTarget(target)}`
     );
   } else {
     await prisma.user.create({
-      data: { email: parsedEmail, password: hash, role: "admin" },
+      // Phase 0: staff is a boolean capability, not a role; the bootstrap
+      // admin is verified at creation (operator action, not a signup flow).
+      data: { email: parsedEmail, password: hash, isStaff: true, emailVerifiedAt: new Date() },
     });
     console.log(`created admin ${parsedEmail} @ ${describeDbTarget(target)}`);
   }
