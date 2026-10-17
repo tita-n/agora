@@ -65,24 +65,24 @@ export function SiteDesign({ config, siteUrl, themeLabel }: { config: SiteConfig
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-sm font-semibold text-gray-700">Sections & order</h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <h2 className="text-sm font-semibold text-ink">Sections & order</h2>
+        <p className="mt-1 text-xs text-ink-muted">
           What appears on your site, top to bottom. A section with nothing in it never shows — toggling it back on is
           free. Add content from Products / Services / Gallery / Testimonials pages.
         </p>
-        <ul className="mt-3 divide-y rounded-lg border border-gray-200 bg-white">
+        <ul className="mt-3 divide-y rounded-md border border-rule bg-card">
           {sections.map((s, i) => (
             <li key={s.type} className="flex items-center gap-3 px-3 py-2">
               <span className="flex flex-col">
-                <button type="button" aria-label={`Move ${s.type} up`} onClick={() => move(i, -1)} disabled={i === 0} className="px-1 text-gray-400 hover:text-gray-900 disabled:opacity-25">
+                <button type="button" aria-label={`Move ${s.type} up`} onClick={() => move(i, -1)} disabled={i === 0} className="px-1 text-ink-faint hover:text-ink disabled:opacity-25">
                   ▲
                 </button>
-                <button type="button" aria-label={`Move ${s.type} down`} onClick={() => move(i, 1)} disabled={i === sections.length - 1} className="px-1 text-gray-400 hover:text-gray-900 disabled:opacity-25">
+                <button type="button" aria-label={`Move ${s.type} down`} onClick={() => move(i, 1)} disabled={i === sections.length - 1} className="px-1 text-ink-faint hover:text-ink disabled:opacity-25">
                   ▼
                 </button>
               </span>
               <span className="min-w-0 flex-1 truncate text-sm">{SECTION_LABELS[s.type]}</span>
-              <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+              <label className="flex items-center gap-2 text-xs font-medium text-ink-muted">
                 <input
                   type="checkbox"
                   checked={s.enabled}
@@ -99,32 +99,32 @@ export function SiteDesign({ config, siteUrl, themeLabel }: { config: SiteConfig
 
       <section className="grid gap-6 sm:grid-cols-2">
         <div>
-          <h2 className="text-sm font-semibold text-gray-700">Brand colour</h2>
-          <p className="mt-1 text-xs text-gray-500">Buttons, headings accents, links. Text on top of it is auto-checked for contrast.</p>
+          <h2 className="text-sm font-semibold text-ink">Brand colour</h2>
+          <p className="mt-1 text-xs text-ink-muted">Buttons, headings accents, links. Text on top of it is auto-checked for contrast.</p>
           <div className="mt-2 flex items-center gap-2">
             <input
               type="color"
               aria-label="Pick a brand color"
               value={hexOk ? primaryColor : "#111827"}
               onChange={(e) => setPrimaryColor(e.target.value)}
-              className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
+              className="h-9 w-12 cursor-pointer rounded border border-rule-strong bg-card p-0.5"
             />
             <input
-              className="w-28 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-900 focus:outline-none"
+              className="w-28 rounded-md border border-rule-strong px-2 py-1.5 text-sm focus:border-ink focus:outline-none"
               value={primaryColor}
               maxLength={7}
               onChange={(e) => setPrimaryColor(e.target.value)}
               aria-label="Brand color hex"
             />
-            {!hexOk && <span className="text-xs text-red-600">use #rrggbb</span>}
+            {!hexOk && <span className="text-xs text-danger">use #rrggbb</span>}
           </div>
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-gray-700">Fonts</h2>
-          <p className="mt-1 text-xs text-gray-500">Self-hosted — no third-party font downloads on your visitors&apos; data plans.</p>
+          <h2 className="text-sm font-semibold text-ink">Fonts</h2>
+          <p className="mt-1 text-xs text-ink-muted">Self-hosted — no third-party font downloads on your visitors&apos; data plans.</p>
           <div role="radiogroup" aria-label="Font pair" className="mt-2 space-y-1.5">
             {FONT_PAIR_KEYS.map((k) => (
-              <label key={k} className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${fontPairKey === k ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-gray-400"}`}>
+              <label key={k} className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${fontPairKey === k ? "border-ink bg-paper" : "border-rule hover:border-gray-400"}`}>
                 <input type="radio" name="fontpair" checked={fontPairKey === k} onChange={() => setFontPairKey(k)} />
                 {FONT_PAIR_LABELS[k]}
               </label>
@@ -134,20 +134,20 @@ export function SiteDesign({ config, siteUrl, themeLabel }: { config: SiteConfig
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={save} disabled={busy || !hexOk} className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50">
+        <button type="button" onClick={save} disabled={busy || !hexOk} className="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50">
           {busy ? "Saving…" : "Save design"}
         </button>
-        <a href={siteUrl} className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <a href={siteUrl} className="rounded-md border border-rule-strong px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper">
           View my site ↗
         </a>
       </div>
       {msg && (
-        <p className={`text-xs ${msg.ok ? "text-green-600" : "text-red-600"}`} role="status">
+        <p className={`text-xs ${msg.ok ? "text-success" : "text-danger"}`} role="status">
           {msg.text}
         </p>
       )}
 
-      <aside className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
+      <aside className="rounded-md border border-warn/40 bg-warn/10 p-4 text-xs leading-relaxed text-warn">
         <p className="font-semibold">You&apos;re on the “{themeLabel}” theme.</p>
         <p className="mt-1">
           Theme switching after signup isn&apos;t offered yet — a theme change moves your price, your payment

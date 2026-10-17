@@ -18,29 +18,29 @@ export function UserNav() {
 
   return (
     <div className="mb-8 flex items-center justify-between">
-      <Link href="/" className="text-sm font-bold tracking-tight text-gray-900">
+      <Link href="/" className="text-sm font-bold tracking-tight text-ink">
         Agora
       </Link>
       <div className="flex items-center gap-3">
         {status === "authenticated" && email && (
-          <span className="hidden text-xs text-gray-400 sm:inline">{email}</span>
+          <span className="hidden text-xs text-ink-faint sm:inline">{email}</span>
         )}
         {status === "authenticated" ? (
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-rule-strong px-3 py-1.5 text-sm font-medium text-ink hover:bg-paper"
           >
             Sign out
           </button>
         ) : status === "unauthenticated" ? (
           <Link
             href="/login"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-700"
+            className="rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:bg-ink/80"
           >
             Sign in
           </Link>
         ) : (
-          <span className="h-7 w-16 animate-pulse rounded bg-gray-100" aria-hidden />
+          <span className="h-7 w-16 animate-pulse rounded bg-ink/5" aria-hidden />
         )}
       </div>
     </div>

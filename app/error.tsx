@@ -21,13 +21,13 @@ export default function AppError({
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-      <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
-      <p className="mt-2 text-gray-500">
+      <h1 className="text-2xl font-bold text-ink">Something went wrong</h1>
+      <p className="mt-2 text-ink-muted">
         We could not load this page. Please try again in a moment.
       </p>
       <button
         onClick={reset}
-        className="mt-6 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+        className="mt-6 rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
       >
         Try again
       </button>

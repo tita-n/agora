@@ -1,15 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* Phase 2.5 tenant sites: visible focus states are required on every theme
-   (keyboard + screen-reader users on tenant sites get the same bar as ours).
-   Themes set --ap-focus from their primary colour via the shared ThemeRoot. */
+
+/* ── Market Ledger base (docs/DESIGN.md) ───────────────────────────────── */
+@layer base {
+  html { color-scheme: light; }
+  body { @apply bg-paper text-ink antialiased; overflow-wrap: anywhere; }
+  /* Visible focus everywhere (keyboard + SR parity between app and sites). */
+  :focus-visible {
+    outline: 2px solid theme("colors.brass.DEFAULT");
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  h1, h2 { font-feature-settings: "ss01"; }
+  /* Money and dates read as a ledger. */
+  .tabular { font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/*
+ * Legacy tenant-site rules kept ONLY while the Phase 2.5 React themes still
+ * exist; the Liquid packages (docs/TEMPLATE_SPEC.md) ship their own CSS and
+ * this block is deleted with themes/ in the template-engine step.
+ */
 .site :focus-visible {
   outline: 3px solid var(--ap-focus, #2563eb);
   outline-offset: 2px;
   border-radius: 2px;
 }
 .site img { min-height: 1px; }
-/* CSS-only mobile nav (details/summary) — no client JS ships for it. */
+
+/* CSS-only disclosure (mobile nav drawer): no client JS ships for it. */
 details > summary { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }
+
+/* Toasts (components/ui/toast.tsx) */
+.ag-toast-stack {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+}
+.ag-toast {
+  @apply rounded-md border border-rule bg-card px-4 py-3 text-sm text-ink shadow-lift;
+}
+.ag-toast[data-kind="error"] { @apply border-danger/40 text-danger; }
+.ag-toast[data-kind="success"] { @apply border-success/40 text-success; }

@@ -40,14 +40,14 @@ export function MarkPaidButton({ id }: { id: string }) {
       <button
         onClick={markPaid}
         disabled={busy}
-        className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        className="rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-ink/80 disabled:opacity-50"
       >
         {busy ? "Recording…" : "Mark as Paid"}
       </button>
       {error && (
-        <span className="flex items-center gap-2 text-xs text-red-600">
+        <span className="flex items-center gap-2 text-xs text-danger">
           {error}
-          <button onClick={() => setError(null)} className="text-gray-400 underline">
+          <button onClick={() => setError(null)} className="text-ink-faint underline">
             dismiss
           </button>
         </span>

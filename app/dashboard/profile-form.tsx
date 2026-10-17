@@ -76,19 +76,19 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
   }
 
   return (
-    <div className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left">
-      <h2 className="text-sm font-semibold text-gray-700">Business profile</h2>
+    <div className="w-full rounded-md border border-rule bg-card p-4 text-left">
+      <h2 className="text-sm font-semibold text-ink">Business profile</h2>
       <div className="mt-3 space-y-3">
         <Input label="Business name" value={values.name} onChange={(v) => set("name", v)} maxLength={80} />
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">Description</span>
+          <span className="mb-1 block text-xs font-medium text-ink-muted">Description</span>
           <textarea
             value={values.description}
             onChange={(e) => set("description", e.target.value)}
             rows={3}
             maxLength={500}
             placeholder="What you sell, who you are — 1–2 sentences."
-            className="w-full resize-y rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+            className="w-full resize-y rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
           />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -98,16 +98,16 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Address" value={values.address} onChange={(v) => set("address", v)} maxLength={200} />
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-500">Brand color</span>
+            <span className="mb-1 block text-xs font-medium text-ink-muted">Brand color</span>
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={/^#[0-9a-fA-F]{6}$/.test(values.primaryColor) ? values.primaryColor : "#111827"}
                 onChange={(e) => set("primaryColor", e.target.value)}
-                className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
+                className="h-9 w-12 cursor-pointer rounded border border-rule-strong bg-card p-0.5"
                 aria-label="Brand color"
               />
-              <span className="font-mono text-xs text-gray-500">{values.primaryColor || "default"}</span>
+              <span className="font-mono text-xs text-ink-muted">{values.primaryColor || "default"}</span>
             </div>
           </label>
         </div>
@@ -120,8 +120,8 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
           <Input label="Facebook" value={values.facebookUrl} onChange={(v) => set("facebookUrl", v)} maxLength={300} />
           <Input label="TikTok" value={values.tiktokUrl} onChange={(v) => set("tiktokUrl", v)} maxLength={300} />
         </div>
-        <fieldset className="rounded-lg border border-gray-200 p-3">
-          <legend className="px-1 text-xs font-medium text-gray-500">Opening hours</legend>
+        <fieldset className="rounded-md border border-rule p-3">
+          <legend className="px-1 text-xs font-medium text-ink-muted">Opening hours</legend>
           <div className="space-y-1.5">
             {Object.entries(values.hours ?? {}).map(([day, d]) => (
               <div key={day} className="flex flex-wrap items-center gap-2 text-xs capitalize">
@@ -132,24 +132,24 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
                 </label>
                 {!d.closed && (
                   <>
-                    <input type="time" value={d.open} onChange={(e) => setDay(day, { open: e.target.value })} className="rounded border border-gray-300 px-2 py-1" aria-label={`${day} opening time`} />
-                    <span className="text-gray-400">→</span>
-                    <input type="time" value={d.close} onChange={(e) => setDay(day, { close: e.target.value })} className="rounded border border-gray-300 px-2 py-1" aria-label={`${day} closing time`} />
+                    <input type="time" value={d.open} onChange={(e) => setDay(day, { open: e.target.value })} className="rounded border border-rule-strong px-2 py-1" aria-label={`${day} opening time`} />
+                    <span className="text-ink-faint">→</span>
+                    <input type="time" value={d.close} onChange={(e) => setDay(day, { close: e.target.value })} className="rounded border border-rule-strong px-2 py-1" aria-label={`${day} closing time`} />
                   </>
                 )}
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-gray-400">Used by Bistro & Studio. Untick a day to open it.</p>
+          <p className="mt-2 text-[11px] text-ink-faint">Used by Bistro & Studio. Untick a day to open it.</p>
         </fieldset>
       </div>
       {message && (
-        <p className={`mt-3 text-xs ${message.ok ? "text-green-600" : "text-red-600"}`}>{message.text}</p>
+        <p className={`mt-3 text-xs ${message.ok ? "text-success" : "text-danger"}`}>{message.text}</p>
       )}
       <button
         onClick={save}
         disabled={saving || values.name.trim() === ""}
-        className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
+        className="mt-4 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save changes"}
       </button>
@@ -170,12 +170,12 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-500">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+        className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
       />
     </label>
   );

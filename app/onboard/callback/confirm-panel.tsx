@@ -68,9 +68,9 @@ export function ConfirmPanel({ reference }: { reference: string }) {
     <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       {state.kind === "confirming" && (
         <>
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
-          <h1 className="mt-6 text-2xl font-bold text-gray-900">Confirming your payment…</h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-rule-strong border-t-gray-900" />
+          <h1 className="mt-6 text-2xl font-bold text-ink">Confirming your payment…</h1>
+          <p className="mt-2 text-sm text-ink-muted">
             This usually takes a few seconds. Your site goes live the moment
             it&apos;s verified.
           </p>
@@ -80,17 +80,17 @@ export function ConfirmPanel({ reference }: { reference: string }) {
       {state.kind === "ready" && (
         <>
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl">✓</div>
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">
+          <h1 className="mt-4 text-2xl font-bold text-ink">
             {state.name ? `${state.name} is live!` : "You're live!"}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-ink-muted">
             Your business was created and your subscription is active.
           </p>
           <div className="mt-6 flex gap-3">
             {state.siteUrl && (
               <a
                 href={state.siteUrl}
-                className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+                className="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
               >
                 Visit your site
               </a>
@@ -98,19 +98,19 @@ export function ConfirmPanel({ reference }: { reference: string }) {
             {state.pathUrl && (
               <a
                 href={state.pathUrl}
-                className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-rule-strong px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper"
               >
                 Preview ({state.pathUrl})
               </a>
             )}
             <Link
               href="/dashboard"
-              className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-md border border-rule-strong px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper"
             >
               Dashboard
             </Link>
           </div>
-          <p className="mt-4 text-xs text-gray-400">
+          <p className="mt-4 text-xs text-ink-faint">
             On your own domain the subdomain link works once DNS is set up; the
             preview link always works.
           </p>
@@ -119,8 +119,8 @@ export function ConfirmPanel({ reference }: { reference: string }) {
 
       {state.kind === "waiting" && (
         <>
-          <h1 className="text-2xl font-bold text-gray-900">Still confirming</h1>
-          <p className="mt-2 max-w-sm text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-ink">Still confirming</h1>
+          <p className="mt-2 max-w-sm text-sm text-ink-muted">
             {state.reason}
             {state.attempts >= MAX_POLLS
               ? " — your payment is safe and processing continues in the background. Reload this page or check your dashboard shortly."
@@ -128,7 +128,7 @@ export function ConfirmPanel({ reference }: { reference: string }) {
           </p>
           <button
             onClick={runConfirm}
-            className="mt-6 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+            className="mt-6 rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
           >
             Check again
           </button>

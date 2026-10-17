@@ -15,16 +15,16 @@ export default function GlobalError({
     <html lang="en">
       <body style={{ margin: 0 }}>
         <main className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-ink">
             Agora is temporarily unavailable
           </h1>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-ink-muted">
             A server error occurred{error.digest ? ` (ref: ${error.digest})` : ""}.
             Please try again.
           </p>
           <button
             onClick={reset}
-            className="mt-6 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+            className="mt-6 rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
           >
             Reload
           </button>

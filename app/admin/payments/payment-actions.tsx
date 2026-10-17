@@ -40,8 +40,8 @@ export function PaymentRowActions({ id, disabled }: { id: string; disabled?: boo
   if (error) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <span className="text-xs text-red-600">{error}</span>
-        <button onClick={() => setError(null)} className="text-xs text-gray-400 underline">
+        <span className="text-xs text-danger">{error}</span>
+        <button onClick={() => setError(null)} className="text-xs text-ink-faint underline">
           dismiss
         </button>
       </div>
@@ -56,7 +56,7 @@ export function PaymentRowActions({ id, disabled }: { id: string; disabled?: boo
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (payer sees this)"
-          className="w-52 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none"
+          className="w-52 rounded border border-rule-strong px-2 py-1 text-xs focus:outline-none"
         />
         <div className="flex gap-2">
           <button
@@ -72,7 +72,7 @@ export function PaymentRowActions({ id, disabled }: { id: string; disabled?: boo
               setRejecting(false);
               setReason("");
             }}
-            className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600"
+            className="rounded border border-rule-strong px-2.5 py-1 text-xs text-ink-muted"
           >
             Cancel
           </button>
@@ -93,7 +93,7 @@ export function PaymentRowActions({ id, disabled }: { id: string; disabled?: boo
       <button
         disabled={busy || disabled}
         onClick={() => setRejecting(true)}
-        className="rounded border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+        className="rounded border border-rule-strong px-3 py-1 text-xs font-medium text-ink-muted hover:bg-paper disabled:opacity-50"
       >
         Reject
       </button>

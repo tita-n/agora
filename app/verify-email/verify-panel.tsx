@@ -27,18 +27,18 @@ export function VerifyPanel() {
   }, [token]);
 
   if (!token) {
-    return <p className="mt-4 text-sm text-gray-500">This page needs the link from your verification email.</p>;
+    return <p className="mt-4 text-sm text-ink-muted">This page needs the link from your verification email.</p>;
   }
   if (state.kind === "ok") {
     return (
       <div className="mt-4 space-y-4">
-        <p className="rounded-md bg-green-50 p-4 text-sm text-green-800" role="status">
+        <p className="rounded-md bg-success/10 p-4 text-sm text-success" role="status">
           Email confirmed — your account is fully active.
         </p>
         <button
           type="button"
           onClick={() => window.location.assign("/api/auth/after-login")}
-          className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+          className="rounded bg-ink px-3 py-2 text-sm font-medium text-white"
         >
           Continue →
         </button>
@@ -48,10 +48,10 @@ export function VerifyPanel() {
   if (state.kind === "error") {
     return (
       <div className="mt-4 space-y-2">
-        <p className="text-sm text-red-600" role="alert">{state.message}</p>
+        <p className="text-sm text-danger" role="alert">{state.message}</p>
         <a href="/account" className="text-sm underline">Resend from your account page</a>
       </div>
     );
   }
-  return <p className="mt-4 text-sm text-gray-500">Checking your link…</p>;
+  return <p className="mt-4 text-sm text-ink-muted">Checking your link…</p>;
 }

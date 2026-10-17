@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { AppShell } from "@/components/shell";
 import { requireUser, prisma } from "@/lib/auth";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
 import { formatNaira } from "@/lib/money";
 import LogoUpload from "./logo-upload";
-import { UserNav } from "@/components/user-nav";
 import { ProfileForm } from "./profile-form";
 import { parseOpeningHours, WEEKDAYS } from "@/lib/opening-hours";
 import { DomainPanel } from "@/components/domain-panel";
@@ -53,22 +53,21 @@ export default async function DashboardPage() {
 
   if (!business) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <div className="w-full max-w-sm">
-          <UserNav />
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.email}</h1>
-        <p className="mt-3 max-w-sm text-gray-500">
+      <AppShell section="dashboard">
+        <div className="py-16 text-center">
+        <h1 className="text-3xl font-bold text-ink">Welcome, {user.email}</h1>
+        <p className="mt-3 max-w-sm text-ink-muted">
           You don&apos;t have a business site yet. Pick a subdomain, describe
           your business, and go live in a couple of minutes.
         </p>
         <Link
           href="/onboard"
-          className="mt-8 rounded-md bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-700"
+          className="mt-8 rounded-md bg-ink px-6 py-3 text-sm font-semibold text-white hover:bg-ink/80"
         >
           Create your business site →
         </Link>
-      </main>
+        </div>
+      </AppShell>
     );
   }
 
@@ -128,14 +127,12 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <UserNav />
+    <AppShell section="dashboard">
 
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-ink">{business.name}</h1>
+            <p className="mt-1 text-sm text-ink-muted">
               {business.theme ? `Theme: ${business.theme.name}` : "Theme: —"}
             </p>
           </div>
@@ -148,30 +145,30 @@ export default async function DashboardPage() {
 
         {/* Site + billing summary */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <div className="rounded-md border border-rule bg-card p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
               Your live site
             </h2>
             <a
               href={siteUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 block truncate text-sm font-medium text-gray-900 underline decoration-gray-300 hover:decoration-gray-900"
+              className="mt-2 block truncate text-sm font-medium text-ink underline decoration-gray-300 hover:decoration-gray-900"
             >
               {siteUrl.replace(/^https?:\/\//, "")}
             </a>
             <Link
               href={`/sites/${business.subdomain}`}
-              className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"
+              className="mt-1 block text-xs text-ink-faint underline hover:text-ink-muted"
             >
               Fallback preview (path-based)
             </Link>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <div className="rounded-md border border-rule bg-card p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
               Subscription
             </h2>
-            <p className="mt-2 text-sm text-gray-700">
+            <p className="mt-2 text-sm text-ink">
               {business.subscriptionStatus === "active" &&
                 `Renews ${formatDate(business.nextBillingDate)}`}
               {business.subscriptionStatus === "past_due" && "Last payment didn't go through."}
@@ -181,8 +178,8 @@ export default async function DashboardPage() {
         </section>
 
         {/* Site content nav (Phase 2.5) */}
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <section className="rounded-md border border-rule bg-card p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
             Site content
           </h2>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -195,7 +192,7 @@ export default async function DashboardPage() {
         </section>
 
         {pendingPayment && (
-          <section className="rounded-lg border border-sky-200 bg-sky-50 p-4">
+          <section className="rounded-md border border-sky-200 bg-sky-50 p-4">
             <p className="text-sm text-sky-900">
               {pendingPayment.kind === "renewal"
                 ? "Your renewal payment is awaiting confirmation — "
@@ -211,8 +208,8 @@ export default async function DashboardPage() {
 
         {/* Past-due: calm, actionable, no red-alert language */}
         {business.subscriptionStatus === "past_due" && (
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm text-amber-900">
+          <section className="rounded-md border border-warn/40 bg-warn/10 p-4">
+            <p className="text-sm text-warn">
               We couldn&apos;t collect this month&apos;s payment, so your site
               is <span className="font-semibold">still live</span> — no action
               is needed today. To keep everything running smoothly, update your
@@ -226,7 +223,7 @@ export default async function DashboardPage() {
                 Update payment details
               </a>
             ) : (
-              <p className="mt-2 text-xs text-amber-700">
+              <p className="mt-2 text-xs text-warn">
                 If the problem continues, contact support@agora.test.
               </p>
             )}
@@ -260,9 +257,7 @@ export default async function DashboardPage() {
           error={business.domainError}
           checkedAt={business.domainCheckedAt}
         />
-
-      </div>
-    </main>
+      </AppShell>
   );
 }
 
@@ -270,10 +265,10 @@ function ContentCard({ href, label, count }: { href: string; label: string; coun
   return (
     <Link
       href={href}
-      className="rounded-md border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-800 hover:border-gray-400 hover:bg-gray-50"
+      className="rounded-md border border-rule px-3 py-2.5 text-sm font-medium text-ink hover:border-gray-400 hover:bg-paper"
     >
       {label}
-      {count !== null && <span className="ml-1.5 text-xs text-gray-400">{count}</span>}
+      {count !== null && <span className="ml-1.5 text-xs text-ink-faint">{count}</span>}
     </Link>
   );
 }

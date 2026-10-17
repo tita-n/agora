@@ -1,7 +1,7 @@
 import { requireDeveloper, prisma } from "@/lib/auth";
+import { AppShell } from "@/components/shell";
 import { tenantSiteUrl } from "@/lib/site-urls";
 import { subscriptionBadge, formatDate } from "@/lib/subscription";
-import { UserNav } from "@/components/user-nav";
 import { formatNaira } from "@/lib/money";
 import { payoutPeriodLabel } from "@/lib/billing/payouts";
 
@@ -80,27 +80,24 @@ export default async function DevPage() {
   );
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto max-w-3xl">
-        <UserNav />
-
+    <AppShell section="developer">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Developer portal</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-ink">Developer portal</h1>
+            <p className="mt-1 text-sm text-ink-muted">
               Signed in as {dev?.displayName ?? user.email}
             </p>
           </div>
-          <div className="text-right text-sm text-gray-500">
-            <span className="font-semibold text-gray-900">{subscribers}</span>{" "}
+          <div className="text-right text-sm text-ink-muted">
+            <span className="font-semibold text-ink">{subscribers}</span>{" "}
             subscribed ·{" "}
-            <span className="font-semibold text-green-700">{active}</span> active
+            <span className="font-semibold text-success">{active}</span> active
           </div>
         </header>
 
         {themes.length === 0 ? (
-          <div className="mt-10 rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-            <p className="text-sm text-gray-500">
+          <div className="mt-10 rounded-md border border-dashed border-rule-strong bg-card p-8 text-center">
+            <p className="text-sm text-ink-muted">
               No published packages yet. Authoring, validation and publishing land
               with the template engine (this phase) — see docs/TEMPLATE_AUTHORING_RULES.md.
             </p>
@@ -109,26 +106,26 @@ export default async function DevPage() {
           themes.map((theme) => (
             <section
               key={theme.id}
-              className="mt-8 overflow-hidden rounded-lg border border-gray-200 bg-white"
+              className="mt-8 overflow-hidden rounded-md border border-rule bg-card"
             >
-              <div className="flex items-baseline justify-between border-b border-gray-100 px-5 py-4">
-                <h2 className="text-sm font-semibold text-gray-900">
+              <div className="flex items-baseline justify-between border-b border-rule/60 px-5 py-4">
+                <h2 className="text-sm font-semibold text-ink">
                   “{theme.name}” — ₦{(theme.price / 100).toLocaleString("en-NG")}/mo
                 </h2>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-ink-faint">
                   {theme.businesses.length} business
                   {theme.businesses.length === 1 ? "" : "es"}
                 </span>
               </div>
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="text-xs uppercase tracking-wider text-gray-400">
+                  <tr className="text-xs uppercase tracking-wider text-ink-faint">
                     <th className="px-5 py-2 font-medium">Business</th>
                     <th className="px-5 py-2 font-medium">Status</th>
                     <th className="px-5 py-2 font-medium">Next billing</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-rule/60">
                   {theme.businesses.map((b) => {
                     const badge = subscriptionBadge(b.subscriptionStatus);
                     return (
@@ -138,11 +135,11 @@ export default async function DevPage() {
                             href={tenantSiteUrl(b.subdomain)}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-medium text-gray-900 hover:underline"
+                            className="font-medium text-ink hover:underline"
                           >
                             {b.name}
                           </a>
-                          <span className="block text-xs text-gray-400">
+                          <span className="block text-xs text-ink-faint">
                             {tenantSiteUrl(b.subdomain).replace(/^https?:\/\//, "")}
                           </span>
                         </td>
@@ -153,7 +150,7 @@ export default async function DevPage() {
                             {badge.label}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-gray-500">
+                        <td className="px-5 py-3 text-ink-muted">
                           {formatDate(b.nextBillingDate)}
                         </td>
                       </tr>
@@ -161,7 +158,7 @@ export default async function DevPage() {
                   })}
                   {theme.businesses.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-5 py-6 text-center text-gray-400">
+                      <td colSpan={3} className="px-5 py-6 text-center text-ink-faint">
                         No subscribers yet.
                       </td>
                     </tr>
@@ -172,15 +169,15 @@ export default async function DevPage() {
           ))
         )}
 
-        <section className="mt-10 overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <div className="flex items-baseline justify-between border-b border-gray-100 px-5 py-4">
-            <h2 className="text-sm font-semibold text-gray-900">Payouts — your 70% share</h2>
-            <span className="text-sm text-gray-500">
-              owed now: <span className="font-semibold text-gray-900">{formatNaira(owedTotal)}</span>
+        <section className="mt-10 overflow-hidden rounded-md border border-rule bg-card">
+          <div className="flex items-baseline justify-between border-b border-rule/60 px-5 py-4">
+            <h2 className="text-sm font-semibold text-ink">Payouts — your 70% share</h2>
+            <span className="text-sm text-ink-muted">
+              owed now: <span className="font-semibold text-ink">{formatNaira(owedTotal)}</span>
             </span>
           </div>
           {payouts.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-gray-400">
+            <p className="px-5 py-6 text-sm text-ink-faint">
               No payouts computed yet. A row appears after the first full
               month following your first confirmed payment (computed on the
               1st, covering the previous month).
@@ -188,18 +185,18 @@ export default async function DevPage() {
           ) : (
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-gray-400">
+                <tr className="text-xs uppercase tracking-wider text-ink-faint">
                   <th className="px-5 py-2 font-medium">Period</th>
                   <th className="px-5 py-2 font-medium">Amount</th>
                   <th className="px-5 py-2 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-rule/60">
                 {payouts.map((x) => (
                   <tr key={x.id}>
-                    <td className="px-5 py-3 text-gray-900">{payoutPeriodLabel(new Date(x.periodStart))}</td>
-                    <td className="px-5 py-3 font-medium text-gray-900">{formatNaira(x.amountKobo)}</td>
-                    <td className="px-5 py-3 text-gray-500">
+                    <td className="px-5 py-3 text-ink">{payoutPeriodLabel(new Date(x.periodStart))}</td>
+                    <td className="px-5 py-3 font-medium text-ink">{formatNaira(x.amountKobo)}</td>
+                    <td className="px-5 py-3 text-ink-muted">
                       {x.status === "paid"
                         ? `paid ${x.paidAt ? formatDate(new Date(x.paidAt)) : ""}`
                         : "owed — transfer arrives manually from Agora"}
@@ -210,7 +207,6 @@ export default async function DevPage() {
             </table>
           )}
         </section>
-      </div>
-    </main>
+      </AppShell>
   );
 }

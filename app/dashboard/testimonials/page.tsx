@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser, prisma } from "@/lib/auth";
+import { AppShell } from "@/components/shell";
 import { TestimonialManager, type TestimonialRow } from "@/components/content-managers";
 import { MAX_TESTIMONIALS } from "@/lib/content-limits";
-import { UserNav } from "@/components/user-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -24,16 +24,13 @@ export default async function TestimonialsPage() {
   })) as TestimonialRow[];
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <UserNav />
+    <AppShell section="dashboard">
         <div className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Testimonials</h1>
-          <Link href="/dashboard" className="text-sm text-gray-500 underline hover:text-gray-900">← Dashboard</Link>
+          <h1 className="text-2xl font-bold text-ink">Testimonials</h1>
+          <Link href="/dashboard" className="text-sm text-ink-muted underline hover:text-ink">← Dashboard</Link>
         </div>
-        <p className="text-sm text-gray-500">Short customer quotes shown on Boutique & Studio.</p>
+        <p className="text-sm text-ink-muted">Short customer quotes shown on Boutique & Studio.</p>
         <TestimonialManager testimonials={rows} limit={MAX_TESTIMONIALS} />
-      </div>
-    </main>
+      </AppShell>
   );
 }

@@ -90,12 +90,12 @@ export default function LogoUpload({ currentLogoUrl }: { currentLogoUrl?: string
   const shown = preview ?? currentLogoUrl ?? null;
 
   return (
-    <div className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left">
-      <h2 className="text-sm font-semibold text-gray-700">Logo</h2>
-      <p className="mb-3 text-xs text-gray-400">
+    <div className="w-full rounded-md border border-rule bg-card p-4 text-left">
+      <h2 className="text-sm font-semibold text-ink">Logo</h2>
+      <p className="mb-3 text-xs text-ink-faint">
         PNG, JPEG or WebP up to 2 MB. Appears on your site hero once saved.
       </p>
-      <label className="block cursor-pointer rounded-md border border-dashed border-gray-300 px-3 py-4 text-center text-sm text-gray-500 hover:bg-gray-50">
+      <label className="block cursor-pointer rounded-md border border-dashed border-rule-strong px-3 py-4 text-center text-sm text-ink-muted hover:bg-paper">
         {status === "uploading" ? "Uploading…" : currentLogoUrl ? "Replace logo" : "Choose image"}
         <input
           type="file"
@@ -120,19 +120,19 @@ export default function LogoUpload({ currentLogoUrl }: { currentLogoUrl?: string
             type="button"
             onClick={removeLogo}
             disabled={removing}
-            className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-md border border-danger/40 px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
           >
             {removing ? "Removing…" : "Remove logo"}
           </button>
-          {removeError && <span className="text-xs text-red-600">{removeError}</span>}
+          {removeError && <span className="text-xs text-danger">{removeError}</span>}
         </div>
       )}
       {status === "done" && (
-        <p className="mt-2 text-xs text-green-600">
+        <p className="mt-2 text-xs text-success">
           Saved — your site now shows this logo.
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
     </div>
   );
 }

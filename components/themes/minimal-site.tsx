@@ -38,7 +38,7 @@ export function MinimalSite({
   const hasContact = Boolean(data.contactEmail || data.contactPhone || data.address);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col text-gray-900">
+    <div className="min-h-screen bg-paper flex flex-col text-ink">
       <main className="flex-1">
         {/* Hero */}
         <section className="px-4 pt-20 pb-16 text-center">
@@ -59,7 +59,7 @@ export function MinimalSite({
               aria-hidden
             />
             {data.description && (
-              <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-gray-600">
+              <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-ink-muted">
                 {data.description}
               </p>
             )}
@@ -78,15 +78,15 @@ export function MinimalSite({
         {/* Contact — rendered only if at least one field exists; rows
             render per-field so there are never empty labels. */}
         {hasContact && (
-          <section className="border-t border-gray-200 bg-white px-4 py-12">
+          <section className="border-t border-rule bg-card px-4 py-12">
             <div className="mx-auto max-w-xl">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-faint">
                 Contact
               </h2>
               <dl className="mt-4 space-y-3 text-sm">
                 {data.contactEmail && (
                   <div className="flex gap-3">
-                    <dt className="w-20 shrink-0 font-medium text-gray-500">Email</dt>
+                    <dt className="w-20 shrink-0 font-medium text-ink-muted">Email</dt>
                     <dd>
                       <a href={`mailto:${data.contactEmail}`} className="underline">
                         {data.contactEmail}
@@ -96,13 +96,13 @@ export function MinimalSite({
                 )}
                 {data.contactPhone && (
                   <div className="flex gap-3">
-                    <dt className="w-20 shrink-0 font-medium text-gray-500">Phone</dt>
+                    <dt className="w-20 shrink-0 font-medium text-ink-muted">Phone</dt>
                     <dd>{data.contactPhone}</dd>
                   </div>
                 )}
                 {data.address && (
                   <div className="flex gap-3">
-                    <dt className="w-20 shrink-0 font-medium text-gray-500">Address</dt>
+                    <dt className="w-20 shrink-0 font-medium text-ink-muted">Address</dt>
                     <dd>{data.address}</dd>
                   </div>
                 )}
@@ -113,10 +113,10 @@ export function MinimalSite({
       </main>
 
       {/* The platform billboard — every live site advertises Agora. */}
-      <footer className="border-t border-gray-200 bg-white px-4 py-6 text-center">
+      <footer className="border-t border-rule bg-card px-4 py-6 text-center">
         <a
           href={agoraHref}
-          className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+          className="text-xs text-ink-faint transition-colors hover:text-ink-muted"
         >
           Powered by <span className="font-semibold">Agora</span>
         </a>

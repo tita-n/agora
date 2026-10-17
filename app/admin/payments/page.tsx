@@ -55,10 +55,10 @@ function OverageNote({
     read("blobTransferGb") && `transfer ${read("blobTransferGb")}`,
   ].filter(Boolean) as string[];
   return (
-    <span className="block text-xs text-gray-500">
+    <span className="block text-xs text-ink-muted">
       base {formatNaira(baseKobo)} + usage {formatNaira(overageKobo)}
       {parts.length > 0 && (
-        <span className="block text-[11px] text-gray-400">{parts.join(" · ")}</span>
+        <span className="block text-[11px] text-ink-faint">{parts.join(" · ")}</span>
       )}
     </span>
   );
@@ -113,26 +113,25 @@ export default async function AdminPaymentsPage() {
   });
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto max-w-4xl">
+    <div className="space-y-5 py-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-2xl font-bold text-gray-900">Payment confirmations</h1>
+          <h1 className="text-2xl font-bold text-ink">Payment confirmations</h1>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-ink-muted">
           Manual bank transfers waiting on you. Check each against your bank
           statement by the <span className="font-mono">reference</span>, then
           confirm — the business goes live the moment you do.
         </p>
 
         {rows.length === 0 ? (
-          <div className="mt-10 rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center">
-            <p className="text-sm text-gray-500">No payments waiting. 🎉 means no queue, not no sales.</p>
+          <div className="mt-10 rounded-md border border-dashed border-rule-strong bg-card p-10 text-center">
+            <p className="text-sm text-ink-muted">No payments waiting. 🎉 means no queue, not no sales.</p>
           </div>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <div className="mt-6 overflow-x-auto rounded-md border border-rule bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400">
+                <tr className="border-b border-rule/60 text-xs uppercase tracking-wider text-ink-faint">
                   <th className="px-4 py-3 font-medium">Reference</th>
                   <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Business</th>
@@ -142,36 +141,36 @@ export default async function AdminPaymentsPage() {
                   <th className="px-4 py-3 font-medium text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-rule/60">
                 {(rows as typeof rows).map((r) => (
                   <tr key={r.id} className="align-top">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-900">{r.reference}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-ink">{r.reference}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
                           r.kind === "renewal"
                             ? "bg-sky-50 text-sky-700 ring-sky-600/20"
-                            : "bg-gray-100 text-gray-600 ring-gray-500/20"
+                            : "bg-ink/5 text-ink-muted ring-gray-500/20"
                         }`}
                       >
                         {r.kind === "renewal" ? "renewal" : "new signup"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{r.businessName}</span>
-                      <span className="block font-mono text-xs text-gray-400">{r.subdomain}</span>
+                      <span className="font-medium text-ink">{r.businessName}</span>
+                      <span className="block font-mono text-xs text-ink-faint">{r.subdomain}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{formatNaira(r.amountKobo)}</span>
+                      <span className="font-medium text-ink">{formatNaira(r.amountKobo)}</span>
                       {r.overageKobo != null && r.overageKobo > 0 && r.baseKobo != null && (
                         <OverageNote baseKobo={r.baseKobo} overageKobo={r.overageKobo} detail={r.overageDetail} />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{r.payerEmail}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td className="px-4 py-3 text-xs text-ink-muted">{r.payerEmail}</td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">
                       {r.age}
                       {r.status === "processing" && (
-                        <span className="block text-amber-600">processing — stuck? investigate before retrying</span>
+                        <span className="block text-warn">processing — stuck? investigate before retrying</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -183,7 +182,6 @@ export default async function AdminPaymentsPage() {
             </table>
           </div>
         )}
-      </div>
-    </main>
+    </div>
   );
 }

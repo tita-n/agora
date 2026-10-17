@@ -74,12 +74,12 @@ const nairaToKobo = (s: string): number | undefined => {
 const koboToNaira = (k: number | null): string => (k === null || k === undefined ? "" : String(k / 100));
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none";
+  "w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none";
 
 function Msg({ msg }: { msg: { ok: boolean; text: string } | null }) {
   if (!msg) return null;
   return (
-    <p className={`mt-2 text-xs ${msg.ok ? "text-green-600" : "text-red-600"}`} role="status">
+    <p className={`mt-2 text-xs ${msg.ok ? "text-success" : "text-danger"}`} role="status">
       {msg.text}
     </p>
   );
@@ -89,10 +89,10 @@ function Msg({ msg }: { msg: { ok: boolean; text: string } | null }) {
 function MoveButtons({ onMove, label }: { onMove: (dir: -1 | 1) => void; label: string }) {
   return (
     <span className="inline-flex flex-col">
-      <button type="button" aria-label={`Move ${label} up`} onClick={() => onMove(-1)} className="px-1 text-gray-400 hover:text-gray-900">
+      <button type="button" aria-label={`Move ${label} up`} onClick={() => onMove(-1)} className="px-1 text-ink-faint hover:text-ink">
         ▲
       </button>
-      <button type="button" aria-label={`Move ${label} down`} onClick={() => onMove(1)} className="px-1 text-gray-400 hover:text-gray-900">
+      <button type="button" aria-label={`Move ${label} down`} onClick={() => onMove(1)} className="px-1 text-ink-faint hover:text-ink">
         ▼
       </button>
     </span>
@@ -197,14 +197,14 @@ export function ProductManager({ products, limit }: { products: ProductRow[]; li
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-muted">
         {products.length}/{limit} products. Order here is the order visitors see. “Price on request” = leave price empty.
       </p>
-      <ul className="divide-y rounded-lg border border-gray-200 bg-white">
+      <ul className="divide-y rounded-md border border-rule bg-card">
         {products.map((p, i) => (
           <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
-            <span className="w-6 text-right text-xs text-gray-400">{i + 1}</span>
-            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-gray-100">
+            <span className="w-6 text-right text-xs text-ink-faint">{i + 1}</span>
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-ink/5">
               {p.imageUrls[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.imageUrls[0]} alt="" className="h-full w-full object-cover" />
@@ -212,55 +212,55 @@ export function ProductManager({ products, limit }: { products: ProductRow[]; li
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{p.name}</span>
-              <span className="block truncate text-xs text-gray-500">
+              <span className="block truncate text-xs text-ink-muted">
                 {p.priceKobo !== null ? `₦${p.priceKobo / 100}` : "Price on request"}
                 {p.category ? ` · ${p.category}` : ""}
                 {!p.inStock ? " · sold out" : ""}
               </span>
             </span>
             <MoveButtons label={p.name} onMove={(d) => move(p.id, d)} />
-            <button type="button" onClick={() => start(p)} className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">
+            <button type="button" onClick={() => start(p)} className="rounded-md border border-rule-strong px-2.5 py-1 text-xs font-medium hover:bg-paper">
               Edit
             </button>
-            <button type="button" onClick={() => remove(p.id)} className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
+            <button type="button" onClick={() => remove(p.id)} className="rounded-md border border-danger/40 px-2.5 py-1 text-xs font-medium text-danger hover:bg-danger/10">
               Delete
             </button>
           </li>
         ))}
-        {products.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No products yet.</li>}
+        {products.length === 0 && <li className="px-4 py-6 text-center text-sm text-ink-faint">No products yet.</li>}
       </ul>
 
       {openId === null ? (
-        <button type="button" onClick={() => start()} disabled={products.length >= limit} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-40">
+        <button type="button" onClick={() => start()} disabled={products.length >= limit} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-40">
           {products.length >= limit ? "Product limit reached" : "Add product"}
         </button>
       ) : (
-        <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
+        <div className="rounded-md border border-rule-strong bg-paper p-4">
           <h3 className="text-sm font-semibold">{openId === "" ? "New product" : "Edit product"}</h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-gray-600">
+            <label className="block text-xs font-medium text-ink-muted">
               Name *<input className={inputCls} value={form.name} maxLength={120} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </label>
-            <label className="block text-xs font-medium text-gray-600">
+            <label className="block text-xs font-medium text-ink-muted">
               Category (optional)<input className={inputCls} value={form.category} maxLength={60} placeholder="Dresses, Fabrics…" onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} />
             </label>
-            <label className="block text-xs font-medium text-gray-600">
+            <label className="block text-xs font-medium text-ink-muted">
               Price ₦ (optional)<input className={inputCls} inputMode="decimal" value={form.price} placeholder="Leave empty = on request" onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
             </label>
-            <label className="mt-6 flex items-center gap-2 text-xs font-medium text-gray-600">
+            <label className="mt-6 flex items-center gap-2 text-xs font-medium text-ink-muted">
               <input type="checkbox" checked={form.inStock} onChange={(e) => setForm((f) => ({ ...f, inStock: e.target.checked }))} />
               In stock
             </label>
-            <label className="block text-xs font-medium text-gray-600 sm:col-span-2">
+            <label className="block text-xs font-medium text-ink-muted sm:col-span-2">
               Description (optional)
               <textarea className={inputCls} rows={3} maxLength={1000} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </label>
           </div>
           <div className="mt-3">
-            <p className="text-xs font-medium text-gray-600">Photos ({form.imageUrls.length}/{MAX_IMAGES_PER_PRODUCT}) — PNG/JPG/WebP ≤ 2 MB</p>
+            <p className="text-xs font-medium text-ink-muted">Photos ({form.imageUrls.length}/{MAX_IMAGES_PER_PRODUCT}) — PNG/JPG/WebP ≤ 2 MB</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {form.imageUrls.map((u) => (
-                <span key={u} className="relative h-14 w-14 overflow-hidden rounded border border-gray-200 bg-white">
+                <span key={u} className="relative h-14 w-14 overflow-hidden rounded border border-rule bg-card">
                   {/* small thumbnails: raw img avoids next/image width math in this admin grid;
                       it is our-blob-hosted by construction (upload flow). */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -276,21 +276,21 @@ export function ProductManager({ products, limit }: { products: ProductRow[]; li
                 </span>
               ))}
               {form.imageUrls.length < MAX_IMAGES_PER_PRODUCT && (
-                <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded border border-dashed border-gray-300 text-xl text-gray-400 hover:bg-white">
+                <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded border border-dashed border-rule-strong text-xl text-ink-faint hover:bg-card">
                   {uploading ? "…" : "+"}
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pickImages} disabled={!userId || uploading} />
                 </label>
               )}
             </div>
             {openId !== "" && form.imageUrls.length < (products.find((p) => p.id === openId)?.imageUrls.length ?? 0) && (
-              <p className="mt-1 text-[11px] text-gray-400">Removed photos are deleted from storage when you save.</p>
+              <p className="mt-1 text-[11px] text-ink-faint">Removed photos are deleted from storage when you save.</p>
             )}
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <button type="button" onClick={save} disabled={busy || uploading} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50">
+            <button type="button" onClick={save} disabled={busy || uploading} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50">
               {busy ? "Saving…" : "Save product"}
             </button>
-            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-white">
+            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-rule-strong px-4 py-2 text-sm hover:bg-card">
               Cancel
             </button>
           </div>
@@ -347,43 +347,43 @@ export function ServiceManager({ services, limit }: { services: ServiceRow[]; li
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">{services.length}/{limit} services. “From ₦…” = put <em>from</em> in the label box.</p>
-      <ul className="divide-y rounded-lg border border-gray-200 bg-white">
+      <p className="text-xs text-ink-muted">{services.length}/{limit} services. “From ₦…” = put <em>from</em> in the label box.</p>
+      <ul className="divide-y rounded-md border border-rule bg-card">
         {services.map((s, i) => (
           <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-            <span className="w-6 text-right text-xs text-gray-400">{i + 1}</span>
+            <span className="w-6 text-right text-xs text-ink-faint">{i + 1}</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{s.name}</span>
-              <span className="block truncate text-xs text-gray-500">
+              <span className="block truncate text-xs text-ink-muted">
                 {s.priceKobo !== null ? `${s.priceLabel ? s.priceLabel + " " : ""}₦${s.priceKobo / 100}` : "Price on request"}
               </span>
             </span>
             <MoveButtons label={s.name} onMove={(d) => move(s.id, d)} />
-            <button type="button" onClick={() => start(s)} className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Edit</button>
-            <button type="button" onClick={() => remove(s.id)} className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Delete</button>
+            <button type="button" onClick={() => start(s)} className="rounded-md border border-rule-strong px-2.5 py-1 text-xs font-medium hover:bg-paper">Edit</button>
+            <button type="button" onClick={() => remove(s.id)} className="rounded-md border border-danger/40 px-2.5 py-1 text-xs font-medium text-danger hover:bg-danger/10">Delete</button>
           </li>
         ))}
-        {services.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No services yet.</li>}
+        {services.length === 0 && <li className="px-4 py-6 text-center text-sm text-ink-faint">No services yet.</li>}
       </ul>
       {openId === null ? (
-        <button type="button" onClick={() => start()} disabled={services.length >= limit} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-40">
+        <button type="button" onClick={() => start()} disabled={services.length >= limit} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-40">
           {services.length >= limit ? "Service limit reached" : "Add service"}
         </button>
       ) : (
-        <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
+        <div className="rounded-md border border-rule-strong bg-paper p-4">
           <h3 className="text-sm font-semibold">{openId === "" ? "New service" : "Edit service"}</h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-gray-600">Name *<input className={inputCls} value={form.name} maxLength={120} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></label>
-            <label className="block text-xs font-medium text-gray-600">Price ₦ (optional)<input className={inputCls} inputMode="decimal" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} /></label>
-            <label className="block text-xs font-medium text-gray-600">Price label (optional)<input className={inputCls} value={form.priceLabel} maxLength={30} placeholder="from" onChange={(e) => setForm((f) => ({ ...f, priceLabel: e.target.value }))} /></label>
-            <label className="block text-xs font-medium text-gray-600 sm:col-span-2">
+            <label className="block text-xs font-medium text-ink-muted">Name *<input className={inputCls} value={form.name} maxLength={120} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></label>
+            <label className="block text-xs font-medium text-ink-muted">Price ₦ (optional)<input className={inputCls} inputMode="decimal" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} /></label>
+            <label className="block text-xs font-medium text-ink-muted">Price label (optional)<input className={inputCls} value={form.priceLabel} maxLength={30} placeholder="from" onChange={(e) => setForm((f) => ({ ...f, priceLabel: e.target.value }))} /></label>
+            <label className="block text-xs font-medium text-ink-muted sm:col-span-2">
               Description (optional)
               <textarea className={inputCls} rows={2} maxLength={1000} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </label>
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <button type="button" onClick={save} disabled={busy} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50">{busy ? "Saving…" : "Save service"}</button>
-            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-white">Cancel</button>
+            <button type="button" onClick={save} disabled={busy} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50">{busy ? "Saving…" : "Save service"}</button>
+            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-rule-strong px-4 py-2 text-sm hover:bg-card">Cancel</button>
           </div>
           <Msg msg={msg} />
         </div>
@@ -431,39 +431,39 @@ export function TestimonialManager({ testimonials, limit }: { testimonials: Test
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">{testimonials.length}/{limit} testimonials shown on Boutique & Studio.</p>
-      <ul className="divide-y rounded-lg border border-gray-200 bg-white">
+      <p className="text-xs text-ink-muted">{testimonials.length}/{limit} testimonials shown on Boutique & Studio.</p>
+      <ul className="divide-y rounded-md border border-rule bg-card">
         {testimonials.map((t, i) => (
           <li key={t.id} className="flex items-start gap-3 px-3 py-2.5">
-            <span className="w-6 pt-0.5 text-right text-xs text-gray-400">{i + 1}</span>
+            <span className="w-6 pt-0.5 text-right text-xs text-ink-faint">{i + 1}</span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm italic text-gray-700">“{t.quote}”</span>
-              <span className="block text-xs text-gray-500">— {t.authorName}</span>
+              <span className="block text-sm italic text-ink">“{t.quote}”</span>
+              <span className="block text-xs text-ink-muted">— {t.authorName}</span>
             </span>
             <MoveButtons label={t.authorName} onMove={(d) => move(t.id, d)} />
-            <button type="button" onClick={() => start(t)} className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Edit</button>
-            <button type="button" onClick={() => remove(t.id)} className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Delete</button>
+            <button type="button" onClick={() => start(t)} className="rounded-md border border-rule-strong px-2.5 py-1 text-xs font-medium hover:bg-paper">Edit</button>
+            <button type="button" onClick={() => remove(t.id)} className="rounded-md border border-danger/40 px-2.5 py-1 text-xs font-medium text-danger hover:bg-danger/10">Delete</button>
           </li>
         ))}
-        {testimonials.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No testimonials yet.</li>}
+        {testimonials.length === 0 && <li className="px-4 py-6 text-center text-sm text-ink-faint">No testimonials yet.</li>}
       </ul>
       {openId === null ? (
-        <button type="button" onClick={() => start()} disabled={testimonials.length >= limit} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-40">
+        <button type="button" onClick={() => start()} disabled={testimonials.length >= limit} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-40">
           {testimonials.length >= limit ? "Testimonial limit reached" : "Add testimonial"}
         </button>
       ) : (
-        <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
+        <div className="rounded-md border border-rule-strong bg-paper p-4">
           <h3 className="text-sm font-semibold">{openId === "" ? "New testimonial" : "Edit testimonial"}</h3>
           <div className="mt-3 space-y-3">
-            <label className="block text-xs font-medium text-gray-600">Author *<input className={inputCls} value={form.authorName} maxLength={80} onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))} /></label>
-            <label className="block text-xs font-medium text-gray-600">
+            <label className="block text-xs font-medium text-ink-muted">Author *<input className={inputCls} value={form.authorName} maxLength={80} onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))} /></label>
+            <label className="block text-xs font-medium text-ink-muted">
               Quote * (max 400)
               <textarea className={inputCls} rows={3} maxLength={400} value={form.quote} onChange={(e) => setForm((f) => ({ ...f, quote: e.target.value }))} />
             </label>
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <button type="button" onClick={save} disabled={busy} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50">{busy ? "Saving…" : "Save testimonial"}</button>
-            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-white">Cancel</button>
+            <button type="button" onClick={save} disabled={busy} className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50">{busy ? "Saving…" : "Save testimonial"}</button>
+            <button type="button" onClick={() => setOpenId(null)} className="rounded-md border border-rule-strong px-4 py-2 text-sm hover:bg-card">Cancel</button>
           </div>
           <Msg msg={msg} />
         </div>
@@ -521,34 +521,34 @@ export function GalleryManager({ images, limit }: { images: GalleryRow[]; limit:
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">{images.length}/{limit} gallery images. Uploads replace: to change a photo, delete it and add a new one.</p>
+      <p className="text-xs text-ink-muted">{images.length}/{limit} gallery images. Uploads replace: to change a photo, delete it and add a new one.</p>
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {images.map((g, i) => (
-          <li key={g.id} className="rounded-lg border border-gray-200 bg-white p-2">
-            <div className="relative aspect-square overflow-hidden rounded bg-gray-100">
+          <li key={g.id} className="rounded-md border border-rule bg-card p-2">
+            <div className="relative aspect-square overflow-hidden rounded bg-ink/5">
               <Image src={g.url} alt={g.caption ?? "Gallery photo"} fill sizes="(max-width: 640px) 50vw, 33vw" className="object-cover" />
             </div>
             <div className="mt-2 flex items-center gap-1">
               <MoveButtons label={`photo ${i + 1}`} onMove={(d) => move(g.id, d)} />
               <input
-                className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-gray-900 focus:outline-none"
+                className="min-w-0 flex-1 rounded border border-rule px-2 py-1 text-xs focus:border-ink focus:outline-none"
                 placeholder="Caption (optional)"
                 maxLength={160}
                 defaultValue={g.caption ?? ""}
                 onChange={(e) => setCaptions((c) => ({ ...c, [g.id]: e.target.value }))}
               />
-              <button type="button" onClick={() => saveCaption(g.id)} disabled={busyId === g.id} className="rounded border border-gray-300 px-2 py-1 text-[11px] font-medium hover:bg-gray-50 disabled:opacity-40">
+              <button type="button" onClick={() => saveCaption(g.id)} disabled={busyId === g.id} className="rounded border border-rule-strong px-2 py-1 text-[11px] font-medium hover:bg-paper disabled:opacity-40">
                 {busyId === g.id ? "…" : "Save"}
               </button>
-              <button type="button" onClick={() => remove(g.id)} aria-label="Delete photo" className="rounded border border-red-200 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50">
+              <button type="button" onClick={() => remove(g.id)} aria-label="Delete photo" className="rounded border border-danger/40 px-2 py-1 text-[11px] text-danger hover:bg-danger/10">
                 ✕
               </button>
             </div>
           </li>
         ))}
       </ul>
-      {images.length === 0 && <p className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400">No photos yet.</p>}
-      <label className="inline-block cursor-pointer rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700">
+      {images.length === 0 && <p className="rounded-md border border-dashed border-rule px-4 py-8 text-center text-sm text-ink-faint">No photos yet.</p>}
+      <label className="inline-block cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/80">
         {uploading ? "Uploading…" : "Add photo"}
         <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={addImage} disabled={!userId || uploading || images.length >= limit} />
       </label>

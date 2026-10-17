@@ -35,7 +35,7 @@ export default async function PreviewPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 bg-gray-900 px-4 py-1.5 text-xs text-gray-300">
+      <div className="flex items-center justify-between gap-3 bg-ink px-4 py-1.5 text-xs text-ink-faint">
         <span>
           Agora theme preview — <span className="font-semibold text-white">{theme.label}</span>
           {state === "empty" ? " · empty content" : " · example data"} · no real business

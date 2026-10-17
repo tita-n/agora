@@ -28,15 +28,15 @@ export default async function AccountPage() {
   });
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
+    <main className="min-h-screen bg-paper px-4 py-12">
       <div className="mx-auto max-w-2xl space-y-8">
         <header>
-          <h1 className="text-2xl font-bold text-gray-900">Account</h1>
-          <p className="mt-1 text-sm text-gray-500">{user.email}</p>
+          <h1 className="text-2xl font-bold text-ink">Account</h1>
+          <p className="mt-1 text-sm text-ink-muted">{user.email}</p>
         </header>
 
         {!caps.emailVerified && (
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <section className="rounded-md border border-warn/40 bg-warn/10 p-4 text-sm text-warn">
             <p className="font-semibold">Email not verified yet.</p>
             <p className="mt-1">
               Your site stays in onboarding until you confirm the link we sent —
@@ -48,19 +48,19 @@ export default async function AccountPage() {
           </section>
         )}
 
-        <section className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Your sites</h2>
+        <section className="rounded-md border border-rule bg-card p-5">
+          <h2 className="text-lg font-semibold text-ink">Your sites</h2>
           {businesses.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-ink-muted">
               No sites yet — <a href="/onboard" className="underline">start onboarding</a>.
             </p>
           ) : (
-            <ul className="mt-3 divide-y divide-gray-100">
+            <ul className="mt-3 divide-y divide-rule/60">
               {businesses.map((b: { id: string; name: string; subdomain: string; subscriptionStatus: string }) => (
                 <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="font-medium text-gray-900">{b.name}</span>
+                  <span className="font-medium text-ink">{b.name}</span>
                   <span className="flex items-center gap-3">
-                    <span className="text-gray-400">{b.subscriptionStatus}</span>
+                    <span className="text-ink-faint">{b.subscriptionStatus}</span>
                     <a href={tenantSiteUrl(b.subdomain)} className="underline" target="_blank" rel="noreferrer">
                       {b.subdomain}
                     </a>
@@ -72,10 +72,10 @@ export default async function AccountPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Developer identity</h2>
+        <section className="rounded-md border border-rule bg-card p-5">
+          <h2 className="text-lg font-semibold text-ink">Developer identity</h2>
           {profile ? (
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-ink-muted">
               You are a developer{profile.displayName ? ` as “${profile.displayName}”` : ""}.{" "}
               <a href="/developer" className="underline">Open the developer console</a>.
             </p>
@@ -84,8 +84,8 @@ export default async function AccountPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-gray-900">Password</h2>
+        <section className="rounded-md border border-rule bg-card p-5">
+          <h2 className="text-lg font-semibold text-ink">Password</h2>
           <PasswordChangeForm />
         </section>
       </div>

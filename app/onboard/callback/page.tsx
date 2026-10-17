@@ -22,15 +22,15 @@ export default async function CallbackPage({
   if (!reference || !reference.startsWith("aos_")) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">We could not find that payment</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink">We could not find that payment</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           The return link was missing or malformed. If your payment completed,
           your site will finish setting itself up automatically — this page
           normally does the checking for you.
         </p>
         <Link
           href="/dashboard"
-          className="mt-6 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+          className="mt-6 rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
         >
           Go to dashboard
         </Link>

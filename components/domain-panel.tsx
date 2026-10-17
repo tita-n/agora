@@ -23,12 +23,12 @@ function statusBadge(status: string, domain: string | null) {
   if (!domain) return null;
   if (status === "verified")
     return (
-      <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
+      <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-success ring-1 ring-inset ring-green-600/20">
         Live — verified
       </span>
     );
   return (
-    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-warn ring-1 ring-inset ring-amber-600/20">
       Waiting for your domain to point here
     </span>
   );
@@ -93,36 +93,36 @@ export function DomainPanel(props: DomainPanelProps) {
   };
 
   return (
-    <section className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
+    <section className="mt-8 rounded-md border border-rule bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-gray-900">Custom domain</h2>
+        <h2 className="text-sm font-semibold text-ink">Custom domain</h2>
         {statusBadge(props.status, props.domain)}
       </div>
 
       {hasDomain ? (
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-ink-muted">
           <span className="font-mono">{props.domain}</span>
           {props.checkedAt && (
-            <span className="ml-2 text-xs text-gray-400">
+            <span className="ml-2 text-xs text-ink-faint">
               last checked {new Date(props.checkedAt).toLocaleString("en-NG")}
             </span>
           )}
         </p>
       ) : (
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-ink-muted">
           You can serve your site at a domain you own — like yourshop.com —
           instead of (or alongside) your agora subdomain.
         </p>
       )}
 
       {props.error && hasDomain && (
-        <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{props.error}</p>
+        <p className="mt-2 rounded bg-warn/10 px-3 py-2 text-xs text-warn">{props.error}</p>
       )}
       {props.domain && props.status === "pending" && (
-        <p className="mt-2 text-xs text-amber-700">{labels.pending}</p>
+        <p className="mt-2 text-xs text-warn">{labels.pending}</p>
       )}
 
-      <div className="mt-4 rounded border border-gray-100 bg-gray-50 p-4 text-sm text-gray-700">
+      <div className="mt-4 rounded border border-rule/60 bg-paper p-4 text-sm text-ink">
         <p>
           This is a one-time setting at the company where you bought your
           domain (for example Namecheap, Whogohost) — it takes about 5 minutes
@@ -131,11 +131,11 @@ export function DomainPanel(props: DomainPanelProps) {
           detect it, your secure certificate activates automatically — usually
           a few minutes, up to 24 hours.
         </p>
-        <p className="mt-3 font-mono text-xs text-gray-900">
+        <p className="mt-3 font-mono text-xs text-ink">
           Type: CNAME · Name: the part before your domain · Value:{" "}
           {records.cname ?? VERCEL_CNAME_TARGET}
         </p>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-ink-muted">
           If your provider complains about a conflicting record, delete the
           old record for that name first. Not sure? Forward this page to
           whoever set your domain up.
@@ -147,13 +147,13 @@ export function DomainPanel(props: DomainPanelProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="shop.example.com"
-          className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
+          className="w-64 rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
           disabled={busy}
         />
         <button
           onClick={() => call("/api/business/domain", "POST", { domain: input })}
           disabled={busy || !input.trim()}
-          className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {props.domain ? "Update" : "Save domain"}
         </button>
@@ -162,14 +162,14 @@ export function DomainPanel(props: DomainPanelProps) {
             <button
               onClick={() => call("/api/business/domain/check", "POST")}
               disabled={busy}
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-md border border-rule-strong bg-card px-3 py-2 text-sm font-medium text-ink hover:bg-paper disabled:opacity-50"
             >
               Check now
             </button>
             <button
               onClick={() => call("/api/business/domain", "DELETE")}
               disabled={busy}
-              className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="rounded-md border border-danger/40 bg-card px-3 py-2 text-sm font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
             >
               Remove
             </button>
@@ -178,7 +178,7 @@ export function DomainPanel(props: DomainPanelProps) {
       </div>
 
       {message && (
-        <p className={`mt-3 text-sm ${message.ok ? "text-green-700" : "text-red-600"}`}>
+        <p className={`mt-3 text-sm ${message.ok ? "text-success" : "text-danger"}`}>
           {message.text}
         </p>
       )}

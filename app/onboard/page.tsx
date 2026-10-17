@@ -37,8 +37,8 @@ export default async function OnboardPage() {
   if (themeRows.length === 0) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Onboarding is not open yet</h1>
-        <p className="mt-2 text-gray-500">No theme is available to purchase right now.</p>
+        <h1 className="text-2xl font-bold text-ink">Onboarding is not open yet</h1>
+        <p className="mt-2 text-ink-muted">No theme is available to purchase right now.</p>
       </main>
     );
   }
@@ -46,7 +46,7 @@ export default async function OnboardPage() {
   return (
     <>
       {!caps.emailVerified && (
-        <div className="mx-auto mt-4 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mx-auto mt-4 max-w-2xl rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
           Confirm your email to finish activation — check your inbox (dev
           servers print the link in the console). Onboarding continues either
           way, but nothing can be charged until then.

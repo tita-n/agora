@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser, prisma } from "@/lib/auth";
+import { AppShell } from "@/components/shell";
 import { ProductManager, type ProductRow } from "@/components/content-managers";
 import { MAX_PRODUCTS } from "@/lib/content-limits";
-import { UserNav } from "@/components/user-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +25,15 @@ export default async function ProductsPage() {
   })) as ProductRow[];
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <UserNav />
+    <AppShell section="dashboard">
         <div className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <Link href="/dashboard" className="text-sm text-gray-500 underline hover:text-gray-900">← Dashboard</Link>
+          <h1 className="text-2xl font-bold text-ink">Products</h1>
+          <Link href="/dashboard" className="text-sm text-ink-muted underline hover:text-ink">← Dashboard</Link>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-muted">
           Shown by the Boutique theme (and Bistro as the menu). Visitors order through WhatsApp — no cart, by design.
         </p>
         <ProductManager products={rows} limit={MAX_PRODUCTS} />
-      </div>
-    </main>
+      </AppShell>
   );
 }

@@ -1,5 +1,4 @@
 import { requireStaff } from "@/lib/auth";
-import { UserNav } from "@/components/user-nav";
 import { RunButton } from "./run-button";
 
 export const dynamic = "force-dynamic";
@@ -54,11 +53,9 @@ export default async function AdminOpsPage() {
   await requireStaff();
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="mx-auto max-w-3xl">
-        <UserNav />
-        <h1 className="text-2xl font-bold text-gray-900">Operations</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-5 py-2">
+        <h1 className="text-2xl font-bold text-ink">Operations</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           Manual triggers for the background jobs — for testing through the
           browser. This is <span className="font-semibold">not</span> the
           schedule: the crons keep running on their own (
@@ -70,25 +67,24 @@ export default async function AdminOpsPage() {
           {JOBS.map((j) => (
             <section
               key={j.job}
-              className="rounded-lg border border-gray-200 bg-white p-5"
+              className="rounded-md border border-rule bg-card p-5"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-sm font-semibold text-gray-900">{j.title}</h2>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-[11px] text-gray-500">
+                <h2 className="text-sm font-semibold text-ink">{j.title}</h2>
+                <span className="rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[11px] text-ink-muted">
                   {j.schedule}
                 </span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-gray-500">{j.what}</p>
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">{j.what}</p>
               <RunButton job={j.job} label={j.title} />
             </section>
           ))}
         </div>
 
-        <p className="mt-6 text-[11px] text-gray-400">
+        <p className="mt-6 text-[11px] text-ink-faint">
           Results shown here are live only in this tab — each cron also logs
           its full summary to the platform logs, which is the durable record.
         </p>
-      </div>
-    </main>
+    </div>
   );
 }

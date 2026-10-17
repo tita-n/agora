@@ -50,7 +50,7 @@ export function RunButton({ job, label }: { job: string; label: string }) {
       <button
         onClick={run}
         disabled={busy}
-        className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        className="rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-ink/80 disabled:opacity-50"
       >
         {busy ? `Running ${label}…` : `Run now`}
       </button>
@@ -58,8 +58,8 @@ export function RunButton({ job, label }: { job: string; label: string }) {
         <pre
           className={`mt-3 max-h-64 overflow-auto rounded-md border px-3 py-2 text-[11px] leading-relaxed ${
             result.ok
-              ? "border-green-200 bg-green-50 text-green-900"
-              : "border-red-200 bg-red-50 text-red-900"
+              ? "border-success/40 bg-success/10 text-green-900"
+              : "border-danger/40 bg-danger/10 text-red-900"
           }`}
         >
           {result.text}

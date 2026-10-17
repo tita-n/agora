@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider } from "@/components/auth-provider";
 
 export const metadata: Metadata = {
@@ -42,8 +43,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${grotesk.variable}`}>
-      <body className="min-h-screen bg-white text-gray-900 antialiased">
-        <AuthProvider>{children}</AuthProvider>
+      <body className="min-h-screen bg-card text-ink antialiased">
+        <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>
       </body>
     </html>
   );

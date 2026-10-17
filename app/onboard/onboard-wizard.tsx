@@ -254,7 +254,7 @@ export function OnboardWizard({
   const PreviewTheme = THEMES[draft.themeSlug] ?? THEMES.minimal;
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12">
+    <main className="min-h-screen bg-paper px-4 py-12">
       <div className="mx-auto max-w-xl">
         {/* Step indicator */}
         <ol className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-medium">
@@ -262,14 +262,14 @@ export function OnboardWizard({
             const n = i + 1;
             return (
               <li key={label} className="flex items-center gap-2">
-                {i > 0 && <span className="text-gray-300">—</span>}
+                {i > 0 && <span className="text-ink-faint">—</span>}
                 <span
                   className={
                     n === step
-                      ? "rounded-full bg-gray-900 px-3 py-1 text-white"
+                      ? "rounded-full bg-ink px-3 py-1 text-white"
                       : n < step
-                        ? "rounded-full bg-gray-200 px-3 py-1 text-gray-700"
-                        : "rounded-full px-3 py-1 text-gray-400"
+                        ? "rounded-full bg-gray-200 px-3 py-1 text-ink"
+                        : "rounded-full px-3 py-1 text-ink-faint"
                   }
                 >
                   {n < step ? `✓ ${label}` : label}
@@ -279,15 +279,15 @@ export function OnboardWizard({
           })}
         </ol>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-rule bg-card p-6 shadow-sm">
           {step === 1 && (
             <section>
-              <h1 className="text-xl font-bold text-gray-900">Choose your address</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl font-bold text-ink">Choose your address</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 This is where your site will live. Lowercase letters, numbers
                 and hyphens.
               </p>
-              <div className="mt-4 flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 focus-within:border-gray-900">
+              <div className="mt-4 flex items-center gap-2 rounded-md border border-rule-strong px-3 py-2 focus-within:border-ink">
                 <input
                   autoFocus
                   value={draft.subdomain}
@@ -298,15 +298,15 @@ export function OnboardWizard({
                   className="min-w-0 flex-1 text-sm outline-none"
                   maxLength={63}
                 />
-                <span className="shrink-0 text-sm text-gray-400">.{rootDomain}</span>
+                <span className="shrink-0 text-sm text-ink-faint">.{rootDomain}</span>
               </div>
               <p
                 className={`mt-2 min-h-5 text-xs ${
                   check.state === "ok"
-                    ? "text-green-600"
+                    ? "text-success"
                     : check.state === "taken"
-                      ? "text-red-600"
-                      : "text-gray-400"
+                      ? "text-danger"
+                      : "text-ink-faint"
                 }`}
                 role="status"
               >
@@ -320,8 +320,8 @@ export function OnboardWizard({
 
           {step === 2 && (
             <section>
-              <h1 className="text-xl font-bold text-gray-900">Your business profile</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl font-bold text-ink">Your business profile</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 Everything here is optional except the name — a name-only
                 site should still look great. WhatsApp + hours light up the
                 order/book buttons on real themes.
@@ -332,7 +332,7 @@ export function OnboardWizard({
                     value={draft.name}
                     onChange={(e) => set("name", e.target.value)}
                     maxLength={80}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                    className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                   />
                 </Field>
                 <Field label="Short description">
@@ -342,7 +342,7 @@ export function OnboardWizard({
                     rows={3}
                     maxLength={500}
                     placeholder="What you sell, who you are — 1–2 sentences."
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                    className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
@@ -351,14 +351,14 @@ export function OnboardWizard({
                       type="email"
                       value={draft.contactEmail}
                       onChange={(e) => set("contactEmail", e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                     />
                   </Field>
                   <Field label="Phone">
                     <input
                       value={draft.contactPhone}
                       onChange={(e) => set("contactPhone", e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                     />
                   </Field>
                 </div>
@@ -366,7 +366,7 @@ export function OnboardWizard({
                   <input
                     value={draft.address}
                     onChange={(e) => set("address", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                    className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
@@ -375,7 +375,7 @@ export function OnboardWizard({
                       value={draft.whatsappNumber}
                       onChange={(e) => set("whatsappNumber", e.target.value)}
                       placeholder="0803 123 4567"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                       maxLength={24}
                     />
                   </Field>
@@ -384,7 +384,7 @@ export function OnboardWizard({
                       value={draft.mapsUrl}
                       onChange={(e) => set("mapsUrl", e.target.value)}
                       placeholder="https://maps.google.com/…"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                       maxLength={400}
                     />
                   </Field>
@@ -395,7 +395,7 @@ export function OnboardWizard({
                       value={draft.instagramUrl}
                       onChange={(e) => set("instagramUrl", e.target.value)}
                       placeholder="instagram.com/you"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                       maxLength={300}
                     />
                   </Field>
@@ -404,7 +404,7 @@ export function OnboardWizard({
                       value={draft.facebookUrl}
                       onChange={(e) => set("facebookUrl", e.target.value)}
                       placeholder="facebook.com/you"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                       maxLength={300}
                     />
                   </Field>
@@ -413,14 +413,14 @@ export function OnboardWizard({
                       value={draft.tiktokUrl}
                       onChange={(e) => set("tiktokUrl", e.target.value)}
                       placeholder="tiktok.com/@you"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                      className="w-full rounded-md border border-rule-strong px-3 py-2 text-sm focus:border-ink focus:outline-none"
                       maxLength={300}
                     />
                   </Field>
                 </div>
 
-                <fieldset className="rounded-lg border border-gray-200 p-3">
-                  <legend className="px-1 text-xs font-medium text-gray-600">Opening hours (optional)</legend>
+                <fieldset className="rounded-md border border-rule p-3">
+                  <legend className="px-1 text-xs font-medium text-ink-muted">Opening hours (optional)</legend>
                   <div className="space-y-1.5">
                     {WEEKDAYS.map((day) => (
                       <div key={day} className="flex flex-wrap items-center gap-2 text-xs capitalize">
@@ -439,15 +439,15 @@ export function OnboardWizard({
                               type="time"
                               value={draft.hours[day].open}
                               onChange={(e) => setDay(day, { open: e.target.value })}
-                              className="rounded border border-gray-300 px-2 py-1"
+                              className="rounded border border-rule-strong px-2 py-1"
                               aria-label={`${day} opening time`}
                             />
-                            <span className="text-gray-400">→</span>
+                            <span className="text-ink-faint">→</span>
                             <input
                               type="time"
                               value={draft.hours[day].close}
                               onChange={(e) => setDay(day, { close: e.target.value })}
-                              className="rounded border border-gray-300 px-2 py-1"
+                              className="rounded border border-rule-strong px-2 py-1"
                               aria-label={`${day} closing time`}
                             />
                           </>
@@ -455,7 +455,7 @@ export function OnboardWizard({
                       </div>
                     ))}
                   </div>
-                  <p className="mt-2 text-[11px] text-gray-400">
+                  <p className="mt-2 text-[11px] text-ink-faint">
                     Shown on Bistro & Studio; all-Closed is treated as “no hours listed”.
                   </p>
                 </fieldset>
@@ -467,20 +467,20 @@ export function OnboardWizard({
                         type="color"
                         value={safeHex(draft.primaryColor)}
                         onChange={(e) => set("primaryColor", e.target.value)}
-                        className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
+                        className="h-9 w-12 cursor-pointer rounded border border-rule-strong bg-card p-0.5"
                         aria-label="Pick a brand color"
                       />
-                      <span className="text-xs text-gray-500">{draft.primaryColor || "default"}</span>
+                      <span className="text-xs text-ink-muted">{draft.primaryColor || "default"}</span>
                     </div>
                   </Field>
                   <Field label="Logo (PNG/JPG/WebP, ≤2 MB)">
                     <div className="flex items-center gap-2">
-                      <label className="cursor-pointer rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50">
+                      <label className="cursor-pointer rounded-md border border-dashed border-rule-strong px-3 py-1.5 text-xs text-ink-muted hover:bg-paper">
                         {uploading ? "Uploading…" : draft.logoUrl ? "Replace" : "Upload"}
                         <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onLogoPick} />
                       </label>
                       {uploadError && (
-                        <span className="text-xs text-red-600">{uploadError}</span>
+                        <span className="text-xs text-danger">{uploadError}</span>
                       )}
                       {draft.logoUrl && (
                         <Image
@@ -504,8 +504,8 @@ export function OnboardWizard({
 
           {step === 3 && (
             <section>
-              <h1 className="text-xl font-bold text-gray-900">Choose a theme</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl font-bold text-ink">Choose a theme</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 The theme decides how your content looks. Open a full example
                 of any theme first — they all show YOUR color and name in the
                 live preview on the next step.
@@ -521,15 +521,15 @@ export function OnboardWizard({
                       role="radio"
                       aria-checked={active}
                       onClick={() => set("themeSlug", theme.slug)}
-                      className={`block w-full rounded-lg border p-4 text-left transition ${
-                        active ? "border-gray-900 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-400"
+                      className={`block w-full rounded-md border p-4 text-left transition ${
+                        active ? "border-ink bg-paper shadow-sm" : "border-rule hover:border-gray-400"
                       }`}
                     >
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold text-gray-900">{theme.name}</span>
-                        <span className="text-sm text-gray-600">{formatNaira(theme.priceKobo)}/mo</span>
+                        <span className="font-semibold text-ink">{theme.name}</span>
+                        <span className="text-sm text-ink-muted">{formatNaira(theme.priceKobo)}/mo</span>
                       </div>
-                      {meta && <p className="mt-1 text-xs text-gray-500">{meta.forWho}</p>}
+                      {meta && <p className="mt-1 text-xs text-ink-muted">{meta.forWho}</p>}
                       <p className="mt-2 text-xs">
                         <a
                           href={`/preview/${theme.slug}`}
@@ -546,7 +546,7 @@ export function OnboardWizard({
                 })}
               </div>
               {draft.themeSlug === "minimal" && (
-                <p className="mt-3 text-xs text-gray-400">
+                <p className="mt-3 text-xs text-ink-faint">
                   Minimal is a one-page card — catalog themes come with
                   product & menu editors after you go live.
                 </p>
@@ -560,8 +560,8 @@ export function OnboardWizard({
 
           {step === 4 && (
             <section>
-              <h1 className="text-xl font-bold text-gray-900">Live preview</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl font-bold text-ink">Live preview</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 This is exactly what visitors at{" "}
                 <span className="font-mono">
                   {draft.subdomain || "yours"}.{rootDomain}
@@ -570,7 +570,7 @@ export function OnboardWizard({
                 in preview; your site has no address until payment.)
               </p>
               <div
-                className="mt-4 max-h-[70vh] overflow-y-auto rounded-lg border border-gray-200"
+                className="mt-4 max-h-[70vh] overflow-y-auto rounded-md border border-rule"
                 onClickCapture={(e) => {
                   // Inert preview: any click on a link inside the render is
                   // swallowed (draft content has no home to navigate to yet).
@@ -592,8 +592,8 @@ export function OnboardWizard({
               {acknowledged ? (
                 <>
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-2xl">✓</div>
-                  <h1 className="mt-4 text-xl font-bold text-gray-900">Thanks — we&apos;ll verify shortly</h1>
-                  <p className="mt-2 text-sm text-gray-500">
+                  <h1 className="mt-4 text-xl font-bold text-ink">Thanks — we&apos;ll verify shortly</h1>
+                  <p className="mt-2 text-sm text-ink-muted">
                     Transfers are checked and activated manually, usually the
                     same business day. Nothing else is needed from you: as soon
                     as your payment is confirmed your site goes live and your
@@ -601,19 +601,19 @@ export function OnboardWizard({
                   </p>
                   <a
                     href="/dashboard"
-                    className="mt-6 inline-block rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="mt-6 inline-block rounded-md border border-rule-strong px-5 py-2.5 text-sm font-medium text-ink hover:bg-paper"
                   >
                     Go to dashboard
                   </a>
                 </>
               ) : issued ? (
                 <>
-                  <h1 className="text-xl font-bold text-gray-900">Send your transfer</h1>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h1 className="text-xl font-bold text-ink">Send your transfer</h1>
+                  <p className="mt-1 text-sm text-ink-muted">
                     Transfer the exact amount below, with the reference as your
                     transfer narration — that&apos;s how we match it to you.
                   </p>
-                  <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
+                  <dl className="mt-4 divide-y rounded-md border border-rule text-sm">
                     <CopyRow label="Amount" value={formatNaira(issued.amountKobo)} />
                     <CopyRow label="Bank" value={issued.bankName ?? "—"} noCopy />
                     <CopyRow label="Account name" value={issued.accountName ?? "—"} noCopy />
@@ -621,26 +621,26 @@ export function OnboardWizard({
                     <CopyRow label="Reference" value={issued.reference ?? "—"} mono />
                   </dl>
                   {payError && (
-                    <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
+                    <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">{payError}</p>
                   )}
                   <button
                     onClick={() => setAcknowledged(true)}
-                    className="mt-6 w-full rounded-md bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
+                    className="mt-6 w-full rounded-md bg-ink py-2.5 text-sm font-semibold text-white hover:bg-ink/80"
                   >
                     I&apos;ve made the transfer
                   </button>
-                  <p className="mt-2 text-center text-xs text-gray-400">
+                  <p className="mt-2 text-center text-xs text-ink-faint">
                     This just lets us know to look out for it — your site activates
                     when we&apos;ve confirmed the payment.
                   </p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-xl font-bold text-gray-900">Confirm &amp; pay</h1>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h1 className="text-xl font-bold text-ink">Confirm &amp; pay</h1>
+                  <p className="mt-1 text-sm text-ink-muted">
                     Your site is created the moment payment is confirmed.
                   </p>
-                  <dl className="mt-4 divide-y rounded-lg border border-gray-200 text-sm">
+                  <dl className="mt-4 divide-y rounded-md border border-rule text-sm">
                     <Row label={`"${selectedTheme.name}" theme — monthly`} value={formatNaira(selectedTheme.priceKobo)} />
                     <Row label="Hosting — monthly" value={formatNaira(hostingFeeKobo)} />
                     <div className="flex items-center justify-between px-4 py-3 font-semibold">
@@ -648,19 +648,19 @@ export function OnboardWizard({
                       <dd>{formatNaira(totalKobo)}</dd>
                     </div>
                   </dl>
-                  <div className="mt-3 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-500">
+                  <div className="mt-3 rounded-md bg-paper px-4 py-2 text-xs text-ink-muted">
                     <span className="font-mono">{draft.subdomain}.{rootDomain}</span> →{" "}
                     {draft.name || "Your Business"}
                   </div>
                   {payError && (
-                    <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{payError}</p>
+                    <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">{payError}</p>
                   )}
                   <div className="mt-6 flex items-center justify-between">
                     <BackButton onClick={() => setStep(4)} />
                     <button
                       onClick={pay}
                       disabled={paying}
-                      className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
+                      className="rounded-md bg-ink px-6 py-2.5 text-sm font-semibold text-white hover:bg-ink/80 disabled:opacity-50"
                     >
                       {paying ? "Preparing…" : `Continue — ${formatNaira(totalKobo)}`}
                     </button>
@@ -679,7 +679,7 @@ export function OnboardWizard({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block text-left">
-      <span className="mb-1 block text-xs font-medium text-gray-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
       {children}
     </label>
   );
@@ -707,16 +707,16 @@ function CopyRow({
     }
   }
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 text-gray-600">
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-ink-muted">
       <dt className="shrink-0">{label}</dt>
       <dd className="flex min-w-0 items-center gap-2">
-        <span className={`truncate ${mono ? "font-mono font-semibold text-gray-900" : "font-medium text-gray-900"}`}>
+        <span className={`truncate ${mono ? "font-mono font-semibold text-ink" : "font-medium text-ink"}`}>
           {value}
         </span>
         {!noCopy && (
           <button
             onClick={copy}
-            className="shrink-0 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-50"
+            className="shrink-0 rounded border border-rule px-1.5 py-0.5 text-[10px] font-medium text-ink-muted hover:bg-paper"
           >
             {copied ? "copied ✓" : "copy"}
           </button>
@@ -728,7 +728,7 @@ function CopyRow({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-gray-600">
+    <div className="flex items-center justify-between px-4 py-3 text-ink-muted">
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
@@ -748,7 +748,7 @@ function NextButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="mt-6 w-full rounded-md bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+      className="mt-6 w-full rounded-md bg-ink py-2.5 text-sm font-semibold text-white hover:bg-ink/80 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {label}
     </button>
@@ -759,7 +759,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+      className="rounded-md border border-rule-strong px-4 py-2.5 text-sm font-medium text-ink-muted hover:bg-paper"
     >
       Back
     </button>

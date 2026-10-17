@@ -30,7 +30,7 @@ function ResetForm() {
 
   if (!token) {
     return (
-      <p className="mt-4 text-sm text-gray-500">
+      <p className="mt-4 text-sm text-ink-muted">
         This page needs the link from your reset email.{" "}
         <a href="/forgot-password" className="underline">Request a new one</a>.
       </p>
@@ -40,15 +40,15 @@ function ResetForm() {
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">New password</label>
+        <label htmlFor="password" className="block text-sm font-medium text-ink">New password</label>
         <input
           id="password" name="password" type="password" autoComplete="new-password" required
           minLength={12} maxLength={128}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-rule-strong px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
         />
       </div>
-      {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
-      <button type="submit" disabled={busy} className="w-full rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50">
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+      <button type="submit" disabled={busy} className="w-full rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink/90 disabled:opacity-50">
         {busy ? "Saving…" : "Set new password"}
       </button>
     </form>
@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900">Choose a new password</h1>
+        <h1 className="text-2xl font-bold text-ink">Choose a new password</h1>
         <Suspense fallback={null}>
           <ResetForm />
         </Suspense>

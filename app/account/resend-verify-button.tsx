@@ -17,7 +17,7 @@ export function ResendVerifyButton() {
 
   return (
     <span className="inline-flex items-center gap-3">
-      <button onClick={resend} disabled={busy} className="rounded border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50">
+      <button onClick={resend} disabled={busy} className="rounded border border-warn/40 bg-card px-3 py-2 text-xs font-semibold text-warn hover:bg-amber-100 disabled:opacity-50">
         {busy ? "Sending…" : "Resend verification email"}
       </button>
       {msg && <span className="text-xs" role="status">{msg}</span>}
