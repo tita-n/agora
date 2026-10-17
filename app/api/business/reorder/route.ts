@@ -21,17 +21,33 @@ export async function PATCH(req: NextRequest) {
   const parsed = reorderInput.safeParse(body);
   if (!parsed.success) return validationError(parsed.error);
 
+  // The per-model delegates have incompatible generic signatures, so the
+  // union `prisma.product | prisma.service | ...` is NOT callable as one
+  // `findMany`/`updateMany` (real Prisma types reject that; a stubbed any-
+  // typed client hides it). Every model here only ever needs the same two
+  // shape-compatible operations, so narrow through an explicit structural
+  // contract instead of hoping the union unifies.
+  type ReorderDelegate = {
+    findMany: (args: {
+      where: { businessId: string };
+      select: { id: true; sortOrder: true };
+    }) => Promise<{ id: string; sortOrder: number }[]>;
+    updateMany: (args: {
+      where: { id: string; businessId: string };
+      data: { sortOrder: number };
+    }) => Promise<unknown>;
+  };
   const delegate = {
     products: prisma.product,
     services: prisma.service,
     gallery: prisma.galleryImage,
     testimonials: prisma.testimonial,
-  }[parsed.data.kind as "products" | "services" | "gallery" | "testimonials"];
+  }[parsed.data.kind as "products" | "services" | "gallery" | "testimonials"] as unknown as ReorderDelegate;
 
-  const owned = (await delegate.findMany({
+  const owned = await delegate.findMany({
     where: { businessId: ctx.businessId },
     select: { id: true, sortOrder: true },
-  })) as { id: string; sortOrder: number }[];
+  });
   const ownedIds = new Set(owned.map((o) => o.id));
 
   let moved = 0;

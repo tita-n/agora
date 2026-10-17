@@ -9,13 +9,30 @@
 const fs = require("fs");
 const path = require("path");
 const clientDir = path.join(process.cwd(), "node_modules", "@prisma", "client");
+// Model list comes from the REAL schema so the stub tracks it for free.
+const schema = fs.readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+const models = [...schema.matchAll(/^model\s+(\w+)/gm)].map((m) => m[1]);
+const camel = (s) => s[0].toLowerCase() + s.slice(1);
+const METHODS = ["findUnique", "findFirst", "findMany", "create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany", "count"];
+// Per-model generic arg types on purpose: the REAL client makes a union of
+// two model delegates non-callable because each member carries a distinct
+// generic signature (SelectSubset<T, XFindManyArgs>) that cannot unify.
+// Mirroring the generic shape here means `prisma.product | prisma.service`
+// style unions fail LOCAL typecheck exactly as they fail Vercel's, instead
+// of silently passing because everything is `any`.
+const delegateDecl = (name) =>
+  `type ${name}StubArgs = { [key: string]: any; __stubBrand?: "${camel(name)}" };\n` +
+  `interface ${name}Delegate {\n` +
+  `  readonly __model?: "${camel(name)}";\n` +
+  METHODS.map((m) => `  ${m}<A extends ${name}StubArgs>(args?: A): Promise<any>;`).join("\n") +
+  "\n}";
+const classBody = models.map((m) => `  ${camel(m)}: ${m}Delegate;`).join("\n");
 fs.writeFileSync(
   path.join(clientDir, "index.d.ts"),
-  `// SANDBOX any-typed stub — see scripts/stub-prisma-types.js
+  `// SANDBOX any-typed stub — see scripts/stub-prisma-types.js\n${models.map((m) => delegateDecl(m)).join("\n")}
 export declare class PrismaClient {
   constructor(options?: any);
-  [model: string]: any;
-  $connect(): Promise<void>;
+${classBody ? classBody + "\n" : "  [model: string]: any;\n"}  $connect(): Promise<void>;
   $disconnect(): Promise<void>;
   $on(event: string, cb: (event: any) => void): void;
   $transaction(fn: any): Promise<any>;
