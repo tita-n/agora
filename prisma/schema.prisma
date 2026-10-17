@@ -101,6 +101,10 @@ model Theme {
   developer   DeveloperProfile @relation(fields: [developerId], references: [id])
   // The ONE version tenants render. Null until a version is published;
   // updates are explicit opt-ins per business (never silent).
+  versions       ThemeVersion[] @relation("ThemeVersions")
+  // The ONE version tenants render. Updates are explicit opt-ins per
+  // business, never silent. FK lives HERE (Theme.currentVersionId);
+  // ThemeVersion.themeId is the SEPARATE ownership relation.
   currentVersionId String? @unique
   currentVersion   ThemeVersion? @relation("ThemeCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
   businesses  Business[]
@@ -124,7 +128,10 @@ enum ThemeStatus {
 model ThemeVersion {
   id         String   @id @default(cuid())
   themeId    String
-  theme      Theme    @relation("ThemeCurrentVersion", fields: [themeId], references: [id], onDelete: Cascade)
+  theme      Theme    @relation("ThemeVersions", fields: [themeId], references: [id], onDelete: Cascade)
+  // 1:1 back-reference for the pointer relation whose FK is on Theme;
+  // non-null exactly while this row IS the theme's current version.
+  currentOf  Theme?   @relation("ThemeCurrentVersion")
   version    String   // semver from theme.json; unique per theme
   manifest   Json     // theme.json as validated
   storageKey String   // immutable blob object ("local:<slug>" allowed in dev/preview only)
