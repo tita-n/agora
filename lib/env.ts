@@ -1,0 +1,190 @@
+import { z } from "zod";
+
+/**
+ * Environment validation (finding M-5).
+ *
+ * Required vars fail fast: in production a missing/short NEXTAUTH_SECRET,
+ * absent DATABASE_URL, or malformed ROOT_DOMAIN throws at import time
+ * (build/boot) instead of degrading into opaque request-time auth failures
+ * or silently disabling subdomain tenancy. In development the same
+ * violations are loud console warnings, not hard failures, so a partial
+ * local setup still runs.
+ */
+
+const isProd = process.env.NODE_ENV === "production";
+
+// bare lowercase host, optional :port (dev only — sites.localhost:3000);
+// classifyHost strips the port for matching, URL builders keep it.
+const BARE_HOST_RE = /^[a-z0-9][a-z0-9.-]*(:\d+)?$/;
+
+const EnvSchema = z.object({
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  NEXTAUTH_SECRET: z
+    .string()
+    .min(32, "NEXTAUTH_SECRET must be >= 32 chars (openssl rand -base64 32)"),
+  // ── Phase 0 domain separation (docs/ARCHITECTURE.md) ──────────────────
+  // APP_HOST serves only the product (login, dashboard, admin, APIs);
+  // SITES_DOMAIN is the tenant-sites parent ({sub}.SITES_DOMAIN, cookieless
+  // origin for third-party template rendering). Both are bare lowercase
+  // hosts without protocol. ROOT_DOMAIN is the DEPRECATED single-domain
+  // fallback: if SITES_DOMAIN is unset it equals APP_HOST and *.root keeps
+  // serving tenants exactly as before — a transitional escape hatch for
+  // deploys mid-migration, not the target posture.
+  APP_HOST: z
+    .string()
+    .regex(BARE_HOST_RE, "APP_HOST must be a bare lowercase host, e.g. agora.com (no protocol, no wildcard)")
+    .optional(),
+  SITES_DOMAIN: z
+    .string()
+    .regex(BARE_HOST_RE, "SITES_DOMAIN must be a bare lowercase host, e.g. agorasites.com (or sites.localhost for dev)")
+    .optional(),
+  ROOT_DOMAIN: z
+    .string()
+    .regex(
+      /^[a-z0-9.-]+$/,
+      "ROOT_DOMAIN must be a bare lowercase host, e.g. agora.com (no protocol, no wildcard)"
+    )
+    .optional(),
+  NEXTAUTH_URL: z.string().url().optional(),
+  // Only required when exercising uploads (/api/blob/*); the blob SDK
+  // reads it from the environment itself.
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+
+  // ── Payment providers (Phase 1.5) ──────────────────────────────────────
+  // The ONE switch for the money path: manual bank transfer (active) or
+  // paystack (kept ready). Flipping this env var is the entire migration
+  // path — no code change.
+  PAYMENT_PROVIDER: z.enum(["manual", "paystack"]).default("manual"),
+  // Manual provider destination account — env only, never committed
+  // (details change, and hardcoded credentials are exactly what C-1/C-2
+  // were about). Required in production while the manual provider is active.
+  MANUAL_BANK_NAME: z
+    .string()
+    .min(2, 'MANUAL_BANK_NAME required, e.g. "Guaranty Trust Bank"')
+    .optional(),
+  MANUAL_BANK_ACCOUNT_NAME: z
+    .string()
+    .min(2, "MANUAL_BANK_ACCOUNT_NAME (the account's registered name) required")
+    .optional(),
+  MANUAL_BANK_ACCOUNT_NUMBER: z
+    .string()
+    .regex(/^\d{9,17}$/, "MANUAL_BANK_ACCOUNT_NUMBER must be 9–17 digits")
+    .optional(),
+  // Paystack secret key (sk_test_… for local/test work). Required in
+  // production only when PAYMENT_PROVIDER=paystack (see refine).
+  PAYSTACK_SECRET_KEY: z
+    .string()
+    .regex(
+      /^sk_(test|live)_[A-Za-z0-9_]+$/,
+      "PAYSTACK_SECRET_KEY must look like sk_test_… / sk_live_…"
+    )
+    .optional(),
+  // Test seam only: point at a local mock to unit-test the client. NEVER set
+  // this in production.
+  PAYSTACK_API_BASE_URL: z.string().url().optional(),
+
+  // Vercel Cron protection — required in production because vercel.json
+  // ships enabled cron endpoints; their handlers reject anything that does
+  // not present this secret.
+  CRON_SECRET: z
+    .string()
+    .min(16, "CRON_SECRET must be >= 16 chars (openssl rand -hex 16)")
+    .optional(),
+  // Email for renewal reminders. Optional everywhere BY DESIGN: the cron
+  // jobs log clearly when unset — this feature must not block on email.
+  RESEND_API_KEY: z.string().min(10).optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional(),
+
+  // ── Platform APIs (Phase 2) ────────────────────────────────────────────
+  // Vercel team access token (vca_…) + project id, used ONLY server-side by:
+  //   - the usage-snapshot cron (Analytics daily-usage, a Pro-plan endpoint)
+  //   - the custom-domain routes (project Domains API)
+  // Both features degrade GRACEFULLY when unset (documented in README) —
+  // this is deliberately optional. But it is never half-configured: if one
+  // of the pair is present the other must be (enforced below, production).
+  VERCEL_ACCESS_TOKEN: z.string().min(10, "VERCEL_ACCESS_TOKEN looks truncated").optional(),
+  VERCEL_PROJECT_ID: z.string().min(1).optional(),
+  // Test seam (same role PAYSTACK_API_BASE_URL plays): unit tests point at
+  // a local mock. NEVER set this in production.
+  VERCEL_API_BASE_URL: z.string().url().optional(),
+})
+.superRefine((val, ctx) => {
+  if (!isProd) return;
+  const add = (path: string, message: string) =>
+    ctx.addIssue({ code: "custom", path: [path], message });
+
+  if (val.PAYMENT_PROVIDER === "paystack" && !val.PAYSTACK_SECRET_KEY) {
+    add(
+      "PAYSTACK_SECRET_KEY",
+      "PAYSTACK_SECRET_KEY is required in production when PAYMENT_PROVIDER=paystack"
+    );
+  }
+  if (
+    val.PAYMENT_PROVIDER === "manual" &&
+    !(val.MANUAL_BANK_NAME && val.MANUAL_BANK_ACCOUNT_NAME && val.MANUAL_BANK_ACCOUNT_NUMBER)
+  ) {
+    add(
+      "MANUAL_BANK_ACCOUNT_NUMBER",
+      "PAYMENT_PROVIDER=manual requires MANUAL_BANK_NAME, MANUAL_BANK_ACCOUNT_NAME and MANUAL_BANK_ACCOUNT_NUMBER"
+    );
+  }
+  if (!val.CRON_SECRET) {
+    add(
+      "CRON_SECRET",
+      "CRON_SECRET is required in production (vercel.json ships enabled payment crons)"
+    );
+  }
+  // Platform-API pairing: a token without a project id (or the reverse)
+  // means a silent half-feature — fail fast in production instead.
+  if (!val.APP_HOST && !val.ROOT_DOMAIN) {
+    add("APP_HOST", "APP_HOST (plus SITES_DOMAIN for tenant sites) is required in production");
+  }
+  // Two-domain posture is the Phase 0 requirement; single-domain fallback is
+  // tolerated in production ONLY while ROOT_DOMAIN is still set (transitional).
+  if (val.APP_HOST && !val.SITES_DOMAIN && !val.ROOT_DOMAIN) {
+    add("SITES_DOMAIN", "SITES_DOMAIN is required alongside APP_HOST (tenant sites need a separate origin)");
+  }
+  if (Boolean(val.VERCEL_ACCESS_TOKEN) !== Boolean(val.VERCEL_PROJECT_ID)) {
+    add(
+      "VERCEL_PROJECT_ID",
+      "VERCEL_ACCESS_TOKEN and VERCEL_PROJECT_ID must be set together (usage analytics + custom domains)"
+    );
+  }
+});
+
+const parsed = EnvSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  const msg = `Invalid/missing environment: ${parsed.error.issues
+    .map((i) => `${i.path.join(".")}: ${i.message}`)
+    .join("; ")}`;
+  if (isProd) {
+    throw new Error(msg);
+  }
+  console.warn(`[env] ${msg}`);
+}
+
+/**
+ * Validated env. In development, when validation failed this falls back to
+ * the raw process.env (with a warning above) so partial setups keep working.
+ */
+export const env = (
+  parsed.success ? parsed.data : process.env
+) as z.infer<typeof EnvSchema>;
+
+/**
+ * The two-domain posture (Phase 0 docs/ARCHITECTURE.md). Falls back to the
+ * deprecated single ROOT_DOMAIN (sites domain = app domain) so a deploy
+ * mid-migration keeps serving; without any of them this throws with an
+ * operator-readable message at first use (boot fails fast in prod because
+ * middleware imports env).
+ */
+export function resolveHosts(): { appHost: string; sitesDomain: string } {
+  const app = (env.APP_HOST ?? env.ROOT_DOMAIN ?? "").trim().toLowerCase();
+  if (!app) {
+    throw new Error(
+      "Environment misconfigured: set APP_HOST + SITES_DOMAIN (Phase 0 posture) or the legacy ROOT_DOMAIN"
+    );
+  }
+  return { appHost: app, sitesDomain: (env.SITES_DOMAIN ?? app).trim().toLowerCase() };
+}

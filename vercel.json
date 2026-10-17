@@ -1,8 +1,21 @@
 {
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
     {
-      "source": "/((?!_next/|api/|favicon.ico$).*)",
-      "destination": "/$1"
+      "path": "/api/cron/renewal-reminders",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/past-due-sweep",
+      "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron/usage-snapshot",
+      "schedule": "55 6 * * *"
+    },
+    {
+      "path": "/api/cron/dev-payouts",
+      "schedule": "0 6 1 * *"
     }
   ]
 }

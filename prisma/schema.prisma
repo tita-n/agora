@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  business_owner
+  developer
+  admin
+}
+
 model Business {
   id         String   @id @default(cuid())
   name       String
@@ -14,20 +20,89 @@ model Business {
   customDomain String? @unique
   ownerId    String
   themeId    String?
+  logoUrl    String?
+  description   String?
+  contactEmail  String?
+  contactPhone  String?
+  address       String?
+  primaryColor  String? // hex "#rrggbb", validated app-side (zod), used as inline-style accent only
+  subscriptionStatus String @default("inactive") // "inactive" | "active" | "past_due" — transitions in lib/onboarding.ts
+  nextBillingDate    DateTime?
+  paystackCustomerCode     String?
+  paystackSubscriptionCode String?
+  pendingPayments    PendingPayment[]
+  usageRecords   UsageRecord[]
+  // Custom domain (Phase 2). customDomain itself is the pre-existing
+  // @unique field that was unused until now. domainStatus: "none" |
+  // "pending" | "verified" | "failed" — "verified" is what gates BOTH
+  // tenant-host serving and the subdomain->domain redirect. domainError
+  // carries the last human-readable failure (API or verification).
+  domainStatus    String    @default("none")
+  domainError     String?
+  domainCheckedAt DateTime?
+  // ── Phase 2.5 content model: contact/social/hours live on Business,
+  // commerce rows are their own models below. All strings render as React
+  // text; all URL-shaped columns are validated on write AND re-checked on
+  // read (lib/resolve-site.ts), and whatsappNumber stores normalized digits.
+  whatsappNumber String?  // digits with country code, no punctuation ("23480...")
+  instagramUrl   String?  // https, instagram.com allowlist (lib/contacts.ts)
+  facebookUrl    String?
+  tiktokUrl      String?
+  mapsUrl        String?
+  openingHours   Json?    // validated shape in lib/opening-hours.ts
+  siteConfig     Json?    // sections order/visibility + color + font (lib/site-config.ts); null = theme defaults
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   owner      User     @relation(fields: [ownerId], references: [id])
   theme      Theme?   @relation(fields: [themeId], references: [id])
+  onboardingSessions OnboardingSession[]
+  products     Product[]
+  services     Service[]
+  galleryImages  GalleryImage[]
+  testimonials   Testimonial[]
 
-  @@index([subdomain])
+  // No @@index([subdomain]) — @unique already provides the index (M-7).
   @@index([ownerId])
+  @@index([themeId]) // M-6: theme usage / revenue-split lookups scan this
+}
+
+/**
+ * A completed onboarding draft awaiting/confirming payment. This is what
+ * keeps the promise "no Business row until payment succeeds": everything the
+ * owner entered is stored here against the Paystack reference and only
+ * materializes into Business on a verified, amount-reconciled charge.success.
+ * Abandoned sessions can never hold a subdomain hostage in Business; live
+ * sessions are only consulted to make the subdomain picker honest.
+ */
+model OnboardingSession {
+  id        String   @id @default(cuid())
+  userId    String
+  reference String   @unique // provider reference: `aos_<uuid>` (paystack) or `AGORA-XXXXXX` (manual)
+  status    String   @default("initiated") // initiated | paid | business_created | failed
+  payload   Json     // validated ONLY via draftSchema in lib/onboarding.ts
+  paystackTxId String?
+  businessId String?  @unique
+  failReason String?
+  pendingPayment PendingPayment?
+  createdAt     DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User      @relation(fields: [userId], references: [id])
+  business  Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, createdAt]) // sweep/expiry queries: initiated sessions older than X
 }
 
 model Theme {
   id         String     @id @default(cuid())
   name       String
+  // Phase 2.5: the presentation this theme row selects. Keys map to
+  // themes/registry.ts; unknown keys fall back to "minimal" at render time.
+  // Existing rows backfill to "minimal" via the column default (see
+  // migration 20261017130000_phase25_content).
+  templateKey String    @default("minimal")
   devId      String
-  price      Int        // in kobo (smallest currency unit) to avoid float issues
+  price      Int        // in kobo (smallest currency unit) to avoid float issues; must be > 0 — enforced by DB check (Theme_price_positive, see migration 20260912150000_phase1) and by chargeAmountKobo() before any payment calculation
   category   String
   createdAt  DateTime   @default(now())
   dev        User       @relation(fields: [devId], references: [id])
@@ -35,17 +110,203 @@ model Theme {
 
   @@index([devId])
   @@index([category])
+  @@index([templateKey])
 }
 
 model User {
   id        String     @id @default(cuid())
   email     String     @unique
   password  String
-  role      String     // "business_owner" | "developer" | "admin"
+  role      Role       @default(business_owner) // M-8: enum, not free string
   createdAt DateTime   @default(now())
   businesses Business[]
   themes     Theme[]
+  onboardingSessions OnboardingSession[]
+  pendingPayments      PendingPayment[]     @relation("PaymentSubmitter")
+  confirmedPayments    PendingPayment[]     @relation("PaymentConfirmer")
+  devPayouts       DevPayout[] @relation("DevPayouts")
+  confirmedPayouts DevPayout[] @relation("PayoutConfirmer")
 
-  @@index([email])
+  // No @@index([email]) — @unique already provides the index (M-7).
   @@index([role])
+}
+
+/**
+ * A payment that a human must confirm (manual bank transfer) — the only
+ * provider flow that needs it; Paystack fulfills from its verified webhook.
+ *
+ * Holds the not-yet-created Business draft (via businessDraftId ->
+ * OnboardingSession) so NO Business row exists until an admin clicks
+ * Confirm. kind="renewal" records instead point at an existing business and
+ * carry no draft. reference is the payer's collision-checked AGORA-XXXXXX
+ * code; status drives the admin queue (pending -> confirmed | rejected).
+ */
+model PendingPayment {
+  id              String   @id @default(cuid())
+  reference       String   @unique
+  kind            String   @default("signup") // "signup" | "renewal"
+  amountKobo      Int
+  status          String   @default("pending") // pending | processing (claimed) | confirmed | rejected
+  rejectReason    String?
+  // signup -> the OnboardingSession holding the draft; renewal -> null
+  businessDraftId String?  @unique
+  // set only after Confirm: the Business this payment created/renewed
+  businessId      String?
+  confirmedById   String? // admin user who confirmed (audit trail)
+  // Phase 2 renewal itemization: amountKobo = baseKobo + overageKobo for
+  // kind="renewal" rows that had usage overage; null on signup rows and on
+  // renewals with no overage data (flat-fee renewals). overageDetail is the
+  // exact UsageRecord numbers the amount was built from, stored for audit —
+  // rendered by /admin/payments, never trusted as an input anywhere.
+  baseKobo      Int?
+  overageKobo   Int?
+  overageDetail Json?
+  confirmedAt   DateTime? // set when status flips to confirmed — the window anchor for DevPayout calculation
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  submittedBy   User       @relation("PaymentSubmitter", fields: [userId], references: [id])
+  userId        String
+  businessDraft OnboardingSession? @relation(fields: [businessDraftId], references: [id], onDelete: Cascade)
+  business      Business?  @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  confirmedBy   User?      @relation("PaymentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([status, kind])
+  @@index([userId])
+}
+/**
+ * Per-business, per-billing-period usage snapshot (Phase 2). ONE row per
+ * (businessId, periodStart): the daily usage-snapshot cron upserts the row
+ * for the CURRENT period, so at renewal time the row that closes is already
+ * as fresh as that morning's snapshot. overageKobo is the pure
+ * calculateOverageKobo() of the stored usage — kept denormalized so a later
+ * FUP rate change can never silently rewrite history of an already-quoted
+ * bill. bandwidthGb/blobTransferGb may be operator-seeded (manual UPDATE)
+ * until Vercel Analytics can attribute them per host; blobStorageGb is
+ * measured exactly from the Blob store. See README "Usage & overage".
+ */
+model UsageRecord {
+  id              String   @id @default(cuid())
+  businessId      String
+  periodStart     DateTime
+  periodEnd       DateTime
+  bandwidthGb     Float    @default(0)
+  blobStorageGb   Float    @default(0)
+  blobTransferGb  Float    @default(0)
+  overageKobo     Int      @default(0)
+  // Per-field provenance written by the usage-snapshot cron: how EACH number
+  // got here — "api" (Vercel Analytics, authoritative), "blob-sdk" (exact
+  // store measurement), "kept" (previous value preserved because no new
+  // source), "not-measured" (still a placeholder 0). The dashboard renders
+  // this so "₦0 because measured-and-fair-use" is never confused with "₦0
+  // because nothing measured it yet". null = row written by hand (SQL seed).
+  sources         Json?
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId, periodStart])
+}
+
+/**
+ * Monthly developer payout ledger row (Phase 2): amountKobo = sum over the
+ * dev's theme price in every payment CONFIRMED in [periodStart, periodEnd)
+ * of floor(0.7 × theme.price) — platform keeps the ₦5,000 fee and 100% of
+ * usage overage (decided explicitly; not reinterpretation-able). Rows are
+ * recomputable while "owed" (cron or re-run overwrites amount), frozen once
+ * "paid" by an admin on /admin/payouts — the same manual-confirm trust model
+ * as PendingPayment, not a new one. NOTE: only payments recorded as
+ * PendingPayment rows enter this ledger; that is the entire manual-provider
+ * flow, and Paystack-mode fulfillment does not mint ledger rows yet (see
+ * README, known limitation if PAYMENT_PROVIDER=paystack is ever enabled).
+ */
+model DevPayout {
+  id           String   @id @default(cuid())
+  devId        String
+  periodStart  DateTime
+  periodEnd    DateTime
+  amountKobo   Int      // 70% of dev's price, across all their businesses' confirmed payments this period
+  status       String   @default("owed") // "owed" | "paid"
+  paidAt       DateTime?
+  paidById     String?
+
+  dev      User  @relation("DevPayouts", fields: [devId], references: [id])
+  paidBy   User? @relation("PayoutConfirmer", fields: [paidById], references: [id], onDelete: SetNull)
+
+  @@index([devId, status])
+}
+
+// ── Phase 2.5: tenant content ─────────────────────────────────────────────
+// All four models are pure content (no relations beyond their Business),
+// cascade with the business, and are ordered by explicit sortOrder ints
+// (reordering is bulk UPDATEs of these). Caps + field lengths are enforced
+// app-side (lib/content-schema.ts + lib/content-limits.ts) and mirrored by
+// DB CHECK constraints in the phase25 migration — change both together.
+// imageUrls stores ONLY blob URLs we minted (validated on write, re-checked
+// on read); at most 5 per product.
+
+model Product {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  priceKobo   Int? // null = "price on request"; >= 0 via DB check
+  category    String?
+  inStock     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  imageUrls   String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  priceKobo   Int?
+  priceLabel  String? // e.g. "from" — displayed verbatim before the price
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model GalleryImage {
+  id         String   @id @default(cuid())
+  businessId String
+  url        String
+  caption    String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  businessId String
+  authorName String
+  quote      String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, sortOrder])
 }

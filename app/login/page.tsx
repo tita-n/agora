@@ -1,13 +1,24 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { loginErrorMessage, normalizeEmail } from "@/lib/auth-errors";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Already signed in? Don't show the form. Rendering it over a live
+  // session is what let a second sign-in swap the cookie while other tabs
+  // and already-hydrated components still held the FIRST account — the
+  // "two accounts logged in at once" illusion. after-login routes by role,
+  // so the signed-in user lands exactly where their own session says.
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/api/auth/after-login");
+  }, [status, router]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -16,7 +27,9 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
     const res = await signIn("credentials", {
-      email: formData.get("email"),
+      // normalize before the exact-match lookup — typed padding/case is a
+      // UX failure, not a security property (see lib/auth-errors)
+      email: normalizeEmail(formData.get("email")),
       password: formData.get("password"),
       redirect: false,
       redirectTo: "/api/auth/after-login",
@@ -25,12 +38,23 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error) {
-      setError("Invalid email or password");
+      // Distinct copy for data-layer failure; everything credential-shaped
+      // stays the one generic message. Mapping lives in a unit-tested pure
+      // function, not inline here.
+      setError(loginErrorMessage(res.error));
     } else {
       // Redirect to role-appropriate page on next navigation
       router.push("/api/auth/after-login");
       router.refresh();
     }
+  }
+
+  if (status === "authenticated") {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
+        Already signed in — taking you where you belong…
+      </main>
+    );
   }
 
   return (
@@ -79,9 +103,6 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Test accounts: dev@agora.test / password123 · owner@agora.test / password123
-        </p>
       </div>
     </main>
   );

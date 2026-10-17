@@ -2,17 +2,45 @@ import { upload } from "@vercel/blob/client";
 
 /**
  * Uploads a logo file to Vercel Blob storage via the client-side upload flow.
- * Returns the public URL of the uploaded blob.
+ * The server route (/api/blob/token) enforces the path prefix, size, and
+ * content type; this client mirrors that so we fail fast instead of 403-ing.
+ *
+ * The pathname is built from the signed-in user's id + a timestamp — the
+ * original file name is deliberately NOT used (client-controlled names must
+ * never reach the blob path).
  */
-export async function uploadLogo(file: File): Promise<{ url: string | null; error: string | null }> {
+
+const MAX_BYTES = 2 * 1024 * 1024;
+const EXT_BY_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+/** kind = which upload lane: logos | products | gallery (mirrors
+ * /api/blob/token's PATH_RE exactly; the server is the enforcement). */
+export type UploadKind = "logos" | "products" | "gallery";
+
+export async function uploadImage(
+  kind: UploadKind,
+  userId: string,
+  file: File
+): Promise<{ url: string | null; error: string | null }> {
   try {
-    const pathname = `logos/${Date.now()}-${file.name.replace(/\s+/g, "-").toLowerCase()}`;
+    const ext = EXT_BY_TYPE[file.type];
+    if (!ext) {
+      return { url: null, error: "Only PNG, JPEG, or WebP images are allowed" };
+    }
+    if (file.size > MAX_BYTES) {
+      return { url: null, error: "File exceeds the 2 MB limit" };
+    }
+
+    const pathname = `${kind}/${userId}/${Date.now()}.${ext}`;
     const result = await upload(pathname, file, {
       access: "public",
       handleUploadUrl: "/api/blob/token",
-      onUploadProgress: (progress) => {
-        console.log(`Upload progress: ${progress.percentage}%`);
-      },
+      // Fail fast instead of hanging on an interrupted connection (M-12).
+      abortSignal: AbortSignal.timeout(60_000),
     });
     return { url: result.url, error: null };
   } catch (err) {
@@ -21,4 +49,10 @@ export async function uploadLogo(file: File): Promise<{ url: string | null; erro
       error: err instanceof Error ? err.message : "Upload failed",
     };
   }
+}
+
+/** Back-compat wrapper: the profile logo lane (used by the dashboard and
+ * the onboarding wizard unchanged). */
+export function uploadLogo(userId: string, file: File) {
+  return uploadImage("logos", userId, file);
 }
