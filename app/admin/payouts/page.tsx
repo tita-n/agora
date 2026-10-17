@@ -27,7 +27,7 @@ export default async function AdminPayoutsPage() {
     paidAt: Date | null;
     periodStart: Date;
     periodEnd: Date;
-    dev: { email: string | null };
+    dev: { user: { email: string } };
     paidBy: { email: string | null } | null;
   }
   const payoutsRaw = await prisma.devPayout.findMany({
@@ -40,7 +40,8 @@ export default async function AdminPayoutsPage() {
       paidAt: true,
       periodStart: true,
       periodEnd: true,
-      dev: { select: { email: true } }, // explicit select — never User.* (H-1)
+      // Phase 0: payouts key on DeveloperProfile — email is one hop deeper
+      dev: { select: { user: { select: { email: true } } } }, // never User.* (H-1)
       paidBy: { select: { email: true } },
     },
   });
@@ -95,7 +96,7 @@ export default async function AdminPayoutsPage() {
                         {formatDate(new Date(x.periodStart))} → {formatDate(new Date(x.periodEnd))}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-ink-muted">{x.dev.email}</td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">{x.dev.user.email}</td>
                     <td className="px-4 py-3 font-medium text-ink">
                       {formatNaira(x.amountKobo)}
                     </td>

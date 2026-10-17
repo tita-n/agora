@@ -34,6 +34,8 @@ async function main() {
       "20260915090000_manual_payments",
       "20260920120000_phase2_usage_domains_payouts",
       "20260921120000_usage_sources",
+      "20261017130000_phase25_content",
+      "20261017180000_phase0_accounts_engine",
     ];
     const pending = expected.filter((e) => !applied.some((a) => a.migration_name === e));
     console.log(`migrations pending vs this checkout: ${pending.length ? pending.join(", ") : "none"}`);
@@ -45,12 +47,18 @@ async function main() {
     SELECT table_name, column_name FROM information_schema.columns
     WHERE (table_name = 'Business'       AND column_name IN ('customDomain','domainStatus','domainError','domainCheckedAt'))
        OR (table_name = 'PendingPayment' AND column_name IN ('userId','baseKobo','overageKobo','overageDetail','confirmedAt'))
-       OR (table_name = 'UsageRecord'    AND column_name IN ('sources'))`;
+       OR (table_name = 'UsageRecord'    AND column_name IN ('sources'))
+       OR (table_name = 'User'           AND column_name IN ('isStaff','emailVerifiedAt','passwordChangedAt'))
+       OR (table_name = 'Theme'          AND column_name IN ('slug','status','currentVersionId','developerId'))
+       OR (table_name = 'Business'       AND column_name IN ('whatsappNumber','siteConfig','themeId'))`;
   const have = new Set(colRows.map((r) => `${r.table_name}.${r.column_name}`));
   const want = [
     "Business.customDomain", "Business.domainStatus", "Business.domainError", "Business.domainCheckedAt",
     "PendingPayment.userId", "PendingPayment.baseKobo", "PendingPayment.overageKobo",
     "PendingPayment.overageDetail", "PendingPayment.confirmedAt", "UsageRecord.sources",
+    "User.isStaff", "User.emailVerifiedAt", "User.passwordChangedAt",
+    "Theme.slug", "Theme.status", "Theme.currentVersionId", "Theme.developerId",
+    "Business.whatsappNumber", "Business.siteConfig", "Business.themeId",
   ];
   const missing = want.filter((w) => !have.has(w));
   console.log(`columns: ${want.length - missing.length}/${want.length} present${missing.length ? ` — MISSING: ${missing.join(", ")}` : ""}`);
@@ -58,25 +66,28 @@ async function main() {
 
   const tableRows: { table_name: string }[] = await prisma.$queryRaw`
     SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name IN ('UsageRecord','DevPayout')`;
+    WHERE table_schema = 'public' AND table_name IN ('UsageRecord','DevPayout','ThemeVersion','DeveloperProfile','AuthToken','LoginAttempt')`;
   const tablesHave = new Set(tableRows.map((r) => r.table_name));
-  const tablesMissing = ["UsageRecord", "DevPayout"].filter((t) => !tablesHave.has(t));
-  console.log(`tables: UsageRecord ${tablesHave.has("UsageRecord") ? "✓" : "✗"}, DevPayout ${tablesHave.has("DevPayout") ? "✓" : "✗"}`);
+  const tablesMissing = ["UsageRecord", "DevPayout", "ThemeVersion", "DeveloperProfile", "AuthToken", "LoginAttempt"].filter((t) => !tablesHave.has(t));
+  console.log(`tables: ${["UsageRecord","DevPayout","ThemeVersion","DeveloperProfile","AuthToken","LoginAttempt"].map((n) => `${n} ${tablesHave.has(n) ? "✓" : "✗"}`).join(", ")}`);
   if (tablesMissing.length) failed = true;
 
-  // 3 ── Role enum values ───────────────────────────────────────────────────
-  const enums: { enumlabel: string }[] = await prisma.$queryRaw`
-    SELECT e.enumlabel FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
-    WHERE t.typname = 'Role'`;
-  const labels = new Set(enums.map((r) => r.enumlabel));
-  const enumMissing = ["business_owner", "developer", "admin"].filter((l) => !labels.has(l));
-  console.log(`Role enum: [${[...labels].sort().join(", ")}]${enumMissing.length ? ` — MISSING ${enumMissing.join(", ")}` : ""}`);
+  // 3 ── ThemeStatus enum + the Role enum being GONE (Phase 0) ─────────────
+  const enums: { typname: string; enumlabel: string }[] = await prisma.$queryRaw`
+    SELECT t.typname, e.enumlabel FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
+    WHERE t.typname IN ('ThemeStatus','Role','AuthTokenKind')`;
+  const themeStatus = new Set(enums.filter((r) => r.typname === "ThemeStatus").map((r) => r.enumlabel));
+  const enumMissing = ["draft", "in_review", "published", "rejected", "unlisted"].filter((l) => !themeStatus.has(l));
+  console.log(`ThemeStatus enum: [${[...themeStatus].sort().join(", ")}]${enumMissing.length ? ` — MISSING ${enumMissing.join(", ")}` : ""}`);
   if (enumMissing.length) failed = true;
+  if (enums.some((r) => r.typname === "Role")) {
+    console.log("NOTE: legacy Role enum still present — expected until 20261017180000 is applied (harmless if User.role is gone)");
+  }
 
   // 4 ── the seeded test accounts, and whether login COULD work ───────────
   const users = await prisma.user.findMany({
     where: { email: { endsWith: "@agora.test" } },
-    select: { email: true, role: true },
+    select: { email: true, isStaff: true, emailVerifiedAt: true },
     orderBy: { email: "asc" },
   });
   if (users.length === 0) {
@@ -92,7 +103,7 @@ async function main() {
       const looksBcrypt = /^\$2[aby]\$\d{2}\$/.test(hash);
       // boolean only — the hash itself is never printed
       const matches = looksBcrypt ? await bcrypt.compare("password123", hash) : false;
-      console.log(`account: ${u.email} role=${u.role} bcryptHash=${looksBcrypt} matchesSeededPassword=${matches}`);
+      console.log(`account: ${u.email} staff=${u.isStaff} verified=${u.emailVerifiedAt ? "yes" : "NO"} bcryptHash=${looksBcrypt} matchesSeededPassword=${matches}`);
       if (!matches) failed = true;
     }
   }
