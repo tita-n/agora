@@ -58,7 +58,12 @@ Date: 2026-10-17 · Branch `arena/01a0934c-agora` · Head after Phase 0: see `gi
    phase2 58 + phase25 97 + engine 82 (escape attempts, prototype access,
    runaway loops, map containment, filter posture, planted-bad-package
    blocking, full+empty renders for all 4 packages, manifest↔key parity) +
-   `theme:validate` on all packages. All green in-sandbox (286 assertions).
+   `theme:validate` on all packages, and `migrate:check` — the ENTIRE
+   migration history applied to a real Postgres (PGlite/WASM, in-process,
+   offline) plus CHECK-contract probes that insert live rows. Added after
+   Neon rejected the hand-written Phase 2.5 CHECK (`cannot use subquery in
+   check constraint`, SQLSTATE 0A000) — shadow-diff review could not see
+   that; execution does. All green in-sandbox (286 assertions).
    A real Playwright e2e suite (`e2e/flows.spec.ts`) is written covering the
    live flows — see "What could not run here".
 

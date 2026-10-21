@@ -49,9 +49,17 @@ CREATE TABLE "Product" (
     CONSTRAINT "Product_category_len" CHECK ("category" IS NULL OR char_length("category") BETWEEN 1 AND 60),
     CONSTRAINT "Product_price_nonneg" CHECK ("priceKobo" IS NULL OR "priceKobo" >= 0),
     CONSTRAINT "Product_images_cap" CHECK (coalesce(array_length("imageUrls", 1), 0) <= 5),
-    CONSTRAINT "Product_image_urls" CHECK (coalesce(array_length("imageUrls", 1), 0) = 0 OR NOT EXISTS (
-        SELECT 1 FROM unnest("imageUrls") AS u WHERE u NOT LIKE 'https://%'
-    ))
+    -- Every element must be an absolute https URL. CHECKs forbid subqueries
+    -- (SQLSTATE 0A000) and set-returning functions, so the invariant is
+    -- asserted on the array's canonical text form. array_out quotes an element
+    -- only when it contains special characters (comma, quote, braces,
+    -- whitespace), so BOTH shapes must parse: {https://a,https://b} and
+    -- {"https://a,x","https://b"}. A quote inside a URL would serialize as \"
+    -- and fail the pattern — fail-closed on purpose, blob URLs never contain
+    -- quotes. (zod + BLOB_URL_RE in lib/blob-url.ts remain the strict gate;
+    -- this CHECK is the last-resort floor that no future writer bypasses it.)
+    CONSTRAINT "Product_image_urls" CHECK (coalesce(array_length("imageUrls", 1), 0) = 0
+        OR "imageUrls"::text ~ '^\{(https://[^",{}]+|"https://[^"]*")(,(https://[^",{}]+|"https://[^"]*"))*\}$')
 );
 
 -- CreateTable
