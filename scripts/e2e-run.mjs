@@ -28,8 +28,11 @@ if (!dbOk || !browserOk) {
   console.log("e2e: rerun `npm run test:e2e` where a DB and browser exist; unit suites cover the sandbox side.");
   process.exit(0);
 }
-const r = spawnSync("node", ["node_modules/@playwright/test/cli.js", "test", "--reporter=list"], {
-  stdio: "inherit",
-  env: { ...process.env },
-});
+// Extra args (spec file paths etc.) pass through: npm run test:e2e runs the
+// flows suite, npm run verify:homepage runs e2e/homepage.spec.ts alone.
+const r = spawnSync(
+  "node",
+  ["node_modules/@playwright/test/cli.js", "test", "--reporter=list", ...process.argv.slice(2)],
+  { stdio: "inherit", env: { ...process.env } }
+);
 process.exit(r.status ?? 1);

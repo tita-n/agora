@@ -24,9 +24,10 @@
     "theme:validate": "tsx scripts/theme-validate.ts",
     "theme:publish": "tsx scripts/theme-publish.ts",
     "test:engine": "tsx scripts/engine-units.ts",
-    "verify": "npm run test:auth && npm run test:ops && npm run test:phase2 && npm run test:phase25 && npm run test:engine && npm run theme:validate && npm run migrate:check && npm run test:e2e",
-    "test:e2e": "node scripts/e2e-run.mjs",
-    "migrate:check": "node scripts/migrate-check.mjs"
+    "verify": "npm run test:auth && npm run test:ops && npm run test:phase2 && npm run test:phase25 && npm run test:engine && npm run theme:validate && npm run migrate:check && npm run test:e2e && npm run verify:homepage",
+    "test:e2e": "node scripts/e2e-run.mjs e2e/flows.spec.ts",
+    "migrate:check": "node scripts/migrate-check.mjs",
+    "verify:homepage": "node scripts/e2e-run.mjs e2e/homepage.spec.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
